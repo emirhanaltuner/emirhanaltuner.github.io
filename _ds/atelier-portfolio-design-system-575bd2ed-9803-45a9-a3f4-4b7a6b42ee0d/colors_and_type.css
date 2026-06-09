@@ -1,0 +1,123 @@
+/* ============================================================
+   ATELIER PORTFOLIO — Colors & Type
+   Extracted from the source portfolio HTML.
+   Import alongside fonts/fonts.css.
+   ============================================================ */
+
+:root {
+  /* ---------- BASE COLOR TOKENS ---------- */
+  --bg:            #f5f0eb;  /* warm cream page background */
+  --orange:        #e84a1a;  /* primary vermilion — brand accent + most UI text */
+  --text-dark:     #1a1a1a;  /* near-black, used for headings & emphasis body */
+  --border:        #e0c4b8;  /* warm dusty-rose hairline borders / dividers */
+  --image-peach:   #f0d8cc;  /* light peach — image placeholder fill */
+
+  /* ---------- SEMANTIC COLOR ROLES ---------- */
+  --color-page-bg:        var(--bg);
+  --color-accent:         var(--orange);   /* links, nav, logo, filter labels */
+  --color-heading:        var(--text-dark);
+  --color-body:           var(--text-dark);
+  --color-body-muted:     #1a1a1acc;        /* ~80% — page paragraph copy */
+  --color-hairline:       var(--border);
+  --color-placeholder:    var(--image-peach);
+
+  /* ---------- TYPE FAMILY ---------- */
+  --font-sans: "FoundersGrotesk", "Space Grotesk", -apple-system, system-ui, sans-serif;
+
+  /* ---------- TYPE SCALE (rem) ---------- */
+  --fs-display:  2.5rem;   /* 40px — project detail title */
+  --fs-h2:       1.4rem;   /* ~22px — page section headings */
+  --fs-body:     1rem;     /* 16px — paragraph copy */
+  --fs-nav:      1rem;     /* 16px — primary nav links */
+  --fs-ui:       0.95rem;  /* ~15px — filter labels, table cells, meta */
+  --fs-small:    0.9rem;   /* ~14px — back button */
+  --fs-xsmall:   0.88rem;  /* ~14px — secondary detail links */
+
+  /* ---------- WEIGHTS ---------- */
+  --fw-regular: 400;
+  --fw-bold:    700;
+
+  /* ---------- LINE HEIGHTS ---------- */
+  --lh-tight:   1.1;   /* display titles */
+  --lh-snug:    1.4;   /* logo nav cluster */
+  --lh-body:    1.7;   /* detail body text */
+  --lh-loose:   1.8;   /* page paragraphs */
+
+  /* ---------- TRACKING ---------- */
+  --ls-tight:  -0.01em;  /* display titles */
+  --ls-ui:      0.01em;  /* filter labels */
+
+  /* ---------- LAYOUT ---------- */
+  --content-width: 860px;
+  --wrap-pad:      24px;
+  --radius-box:    14px;  /* home hero box */
+  --radius-img:    10px;  /* wide detail image */
+  --radius-img-sm: 8px;   /* inline detail image */
+  --hairline:      1px solid var(--color-hairline);
+
+  /* ---------- MOTION ---------- */
+  --ease:        ease;
+  --dur-fast:    0.12s;  /* row / link hover */
+  --dur-base:    0.15s;  /* nav + button hover */
+  --dur-enter:   0.35s;  /* page fade-up */
+}
+
+/* ============================================================
+   SEMANTIC ELEMENT STYLES
+   ============================================================ */
+
+.ds-page {
+  background: var(--color-page-bg);
+  color: var(--color-accent);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+.ds-display {
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-display);
+  line-height: var(--lh-tight);
+  letter-spacing: var(--ls-tight);
+  color: var(--color-heading);
+}
+
+.ds-h2 {
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-h2);
+  color: var(--color-heading);
+}
+
+.ds-body {
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-body);
+  line-height: var(--lh-body);
+  color: var(--color-body);
+}
+.ds-body em { font-style: italic; }
+
+.ds-prose {
+  font-weight: var(--fw-regular);
+  font-size: var(--fs-body);
+  line-height: var(--lh-loose);
+  color: var(--color-body-muted);
+}
+
+.ds-nav-link {
+  font-weight: var(--fw-regular);
+  font-size: var(--fs-nav);
+  color: var(--color-accent);
+  text-decoration: none;
+  transition: opacity var(--dur-base) var(--ease);
+}
+.ds-nav-link:hover { opacity: 0.6; }
+.ds-nav-link.is-active { text-decoration: underline; text-underline-offset: 3px; }
+
+.ds-link {
+  font-weight: var(--fw-regular);
+  font-size: var(--fs-xsmall);
+  color: var(--color-accent);
+  opacity: 0.55;
+  text-decoration: none;
+  transition: opacity var(--dur-base) var(--ease);
+}
+.ds-link:hover { opacity: 1; }

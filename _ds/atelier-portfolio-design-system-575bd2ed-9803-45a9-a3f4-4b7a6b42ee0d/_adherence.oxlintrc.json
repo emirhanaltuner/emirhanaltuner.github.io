@@ -1,0 +1,140 @@
+{
+  "plugins": [
+    "react",
+    "import"
+  ],
+  "rules": {
+    "react/forbid-elements": [
+      "warn",
+      {
+        "forbid": []
+      }
+    ],
+    "no-restricted-imports": [
+      "warn",
+      {
+        "patterns": [
+          {
+            "group": [
+              "ui_kits/portfolio/**"
+            ],
+            "message": "Import design-system components from 'index.js', not component internals."
+          }
+        ]
+      }
+    ],
+    "no-restricted-syntax": [
+      "warn",
+      {
+        "selector": "Literal[value=/#[0-9a-fA-F]{3,8}\\b/]",
+        "message": "Raw hex color — use a design-system color token via var()."
+      },
+      {
+        "selector": "Literal[value=/\\b\\d+px\\b/]",
+        "message": "Raw px value — use a design-system spacing token via var()."
+      },
+      {
+        "selector": "Literal[value=/font-family\\s*:\\s*(?!['\\\"]?(?:FoundersGrotesk|FoundersGrotesk Cond|FoundersGrotesk XCond))/i]",
+        "message": "Font not provided by the design system. Available: FoundersGrotesk, FoundersGrotesk Cond, FoundersGrotesk XCond."
+      }
+    ]
+  },
+  "overrides": [
+    {
+      "files": [
+        "**/index.js"
+      ],
+      "rules": {
+        "no-restricted-imports": "off"
+      }
+    }
+  ],
+  "x-omelette": {
+    "components": {},
+    "tokens": [
+      "--bg",
+      "--border",
+      "--color-accent",
+      "--color-body",
+      "--color-body-muted",
+      "--color-hairline",
+      "--color-heading",
+      "--color-page-bg",
+      "--color-placeholder",
+      "--content-width",
+      "--dur-base",
+      "--dur-enter",
+      "--dur-fast",
+      "--ease",
+      "--font-sans",
+      "--fs-body",
+      "--fs-display",
+      "--fs-h2",
+      "--fs-nav",
+      "--fs-small",
+      "--fs-ui",
+      "--fs-xsmall",
+      "--fw-bold",
+      "--fw-regular",
+      "--hairline",
+      "--image-peach",
+      "--lh-body",
+      "--lh-loose",
+      "--lh-snug",
+      "--lh-tight",
+      "--ls-tight",
+      "--ls-ui",
+      "--orange",
+      "--radius-box",
+      "--radius-img",
+      "--radius-img-sm",
+      "--text-dark",
+      "--wrap-pad"
+    ],
+    "tokenKinds": {
+      "--bg": "color",
+      "--orange": "color",
+      "--text-dark": "font",
+      "--border": "color",
+      "--image-peach": "color",
+      "--color-page-bg": "color",
+      "--color-accent": "color",
+      "--color-heading": "color",
+      "--color-body": "color",
+      "--color-body-muted": "color",
+      "--color-hairline": "color",
+      "--color-placeholder": "color",
+      "--font-sans": "font",
+      "--fs-display": "spacing",
+      "--fs-h2": "spacing",
+      "--fs-body": "spacing",
+      "--fs-nav": "spacing",
+      "--fs-ui": "spacing",
+      "--fs-small": "spacing",
+      "--fs-xsmall": "spacing",
+      "--fw-regular": "other",
+      "--fw-bold": "other",
+      "--lh-tight": "other",
+      "--lh-snug": "other",
+      "--lh-body": "other",
+      "--lh-loose": "other",
+      "--ls-tight": "spacing",
+      "--ls-ui": "spacing",
+      "--content-width": "spacing",
+      "--wrap-pad": "spacing",
+      "--radius-box": "radius",
+      "--radius-img": "radius",
+      "--radius-img-sm": "radius",
+      "--hairline": "color",
+      "--ease": "other",
+      "--dur-fast": "other",
+      "--dur-base": "other",
+      "--dur-enter": "other"
+    },
+    "fontFamilies": [
+      "FoundersGrotesk",
+      "FoundersGrotesk Cond",
+      "FoundersGrotesk XCond"
+    ]
+  }
+}
