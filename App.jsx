@@ -412,11 +412,11 @@ function App() {
     exportContent: async () => {
       downloadFile("atelier-content.state.json", JSON.stringify(contentRef.current));
       try {
-        const r = await fetch(".image-slots.state.json", { cache: "no-store" });
+        const r = await fetch("image-slots.state.json", { cache: "no-store" });
         if (r.ok) {
           const txt = await r.text();
           // brief gap so the browser doesn't drop the second download
-          setTimeout(() => downloadFile(".image-slots.state.json", txt), 400);
+          setTimeout(() => downloadFile("image-slots.state.json", txt), 400);
         }
       } catch (e) {}
     },
