@@ -209,6 +209,27 @@ function persistContent(data) {
     .then(() => { _saving = false; if (_again) { _again = false; persistContent(_latest); } });
 }
 
+// ── GitHub API save ────────────────────────────────────────────────────────
+// Commits one file to the repo using the Contents API.
+async function ghUpdateFile(token, owner, repo, path, text) {
+  const base = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+  const heads = {
+    'Authorization': `Bearer ${token}`,
+    'Accept': 'application/vnd.github.v3+json',
+    'Content-Type': 'application/json'
+  };
+  const getRes = await fetch(base, { headers: heads });
+  if (!getRes.ok) throw new Error(`Cannot read ${path} (${getRes.status} — check token & repo name)`);
+  const { sha } = await getRes.json();
+  // Encode UTF-8 text as base64 (handles non-ASCII)
+  const b64 = btoa(unescape(encodeURIComponent(text)));
+  const putRes = await fetch(base, {
+    method: 'PUT', headers: heads,
+    body: JSON.stringify({ message: 'update portfolio content', content: b64, sha })
+  });
+  if (!putRes.ok) { const e = await putRes.text(); throw new Error(`Failed to save ${path}: ${e}`); }
+}
+
 // Trigger a browser download of a text file (used by "Download site files").
 // Lets the author grab the two state files and upload them to GitHub to publish.
 function downloadFile(name, text, type) {
@@ -407,16 +428,43 @@ function App() {
       writeSection("projects", (m) => ({ ...m, [id]: newProject }));
       go("detail", id);
     },
+    // GitHub API: save content (and optionally images) directly to the repo.
+    ghSave: async (includeImages, onStatus) => {
+      const token = localStorage.getItem('gh_token') || '';
+      const owner = localStorage.getItem('gh_owner') || 'emirhanaltuner';
+      const repo  = localStorage.getItem('gh_repo')  || 'emirhanaltuner.github.io';
+      if (!token) { onStatus('error:No token — open settings first'); return; }
+      try {
+        onStatus('Saving content…');
+        await ghUpdateFile(token, owner, repo, 'atelier-content.state.json', JSON.stringify(contentRef.current));
+        if (includeImages) {
+          onStatus('Saving images (this may take ~30 s)…');
+          const r = await fetch('image-slots.state.json', { cache: 'no-store' });
+          if (r.ok) await ghUpdateFile(token, owner, repo, 'image-slots.state.json', await r.text());
+        }
+        onStatus('done');
+      } catch(e) {
+        onStatus('error:' + e.message);
+      }
+    },
+    ghSettings: {
+      getToken: () => localStorage.getItem('gh_token') || '',
+      setToken: (v) => { if (v) localStorage.setItem('gh_token', v); else localStorage.removeItem('gh_token'); },
+      getOwner: () => localStorage.getItem('gh_owner') || 'emirhanaltuner',
+      setOwner: (v) => localStorage.setItem('gh_owner', v),
+      getRepo:  () => localStorage.getItem('gh_repo')  || 'emirhanaltuner.github.io',
+      setRepo:  (v) => localStorage.setItem('gh_repo', v),
+    },
     // Download the two files that hold all content (text/layout + images) so the
     // author can upload them to GitHub and publish — works with no host bridge.
     exportContent: async () => {
       downloadFile("atelier-content.state.json", JSON.stringify(contentRef.current));
       try {
-        const r = await fetch(".image-slots.state.json", { cache: "no-store" });
+        const r = await fetch("image-slots.state.json", { cache: "no-store" });
         if (r.ok) {
           const txt = await r.text();
           // brief gap so the browser doesn't drop the second download
-          setTimeout(() => downloadFile(".image-slots.state.json", txt), 400);
+          setTimeout(() => downloadFile("image-slots.state.json", txt), 400);
         }
       } catch (e) {}
     },

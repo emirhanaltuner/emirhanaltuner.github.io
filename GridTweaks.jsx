@@ -232,6 +232,24 @@ function GridTweaks({ page, t, setTweak, selected, actions, copied, projectSelec
   const fileInputRef = React.useRef(null);
   const uploadTargetRef = React.useRef(null);
 
+  // GitHub save state
+  const [ghToken, setGhToken] = React.useState(() => actions.ghSettings ? actions.ghSettings.getToken() : '');
+  const [tokenInput, setTokenInput] = React.useState('');
+  const [saveStatus, setSaveStatus] = React.useState(''); // '', 'saving', 'done', 'error:...'
+  const [includeImages, setIncludeImages] = React.useState(false);
+  const [showTokenSetup, setShowTokenSetup] = React.useState(false);
+
+  const handleSave = async () => {
+    setSaveStatus('saving');
+    await actions.ghSave(includeImages, (s) => setSaveStatus(s));
+  };
+  const handleSaveToken = () => {
+    actions.ghSettings.setToken(tokenInput);
+    setGhToken(tokenInput);
+    setTokenInput('');
+    setShowTokenSetup(false);
+  };
+
   const handleExport = () => {
     if (actions.exportContent) actions.exportContent();
     setExported(true); setTimeout(() => setExported(false), 2200);
@@ -272,11 +290,56 @@ function GridTweaks({ page, t, setTweak, selected, actions, copied, projectSelec
              style={{ display:"none" }} onChange={onFileChosen} />
 
       <TweakSection label="Publish to web" />
-      <TweakButton label={exported ? "Downloaded ✓ — now upload to GitHub" : "⬇  Download site files"}
-                   secondary onClick={handleExport} />
-      <div style={{ fontSize: 10.5, opacity: 0.5, padding: "2px 0 4px", lineHeight: 1.5 }}>
-        Saves your 2 content files. Upload them to your GitHub repo (replace the old ones) to update emirhanaltuner.com. Images can only be added here in the editor.
-      </div>
+
+      {/* GitHub Save */}
+      {!ghToken || showTokenSetup ? (
+        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+          <div style={{ fontSize:10.5, opacity:0.6, lineHeight:1.5 }}>
+            {!ghToken ? 'Enter a GitHub token to save directly from the live site:' : 'Update your GitHub token:'}
+          </div>
+          <input type="password" placeholder="ghp_xxxxxxxxxxxx"
+                 value={tokenInput} onChange={e => setTokenInput(e.target.value)}
+                 onKeyDown={e => e.key === 'Enter' && tokenInput && handleSaveToken()}
+                 style={{ fontSize:11, padding:'5px 8px', border:'1px solid #e0c4b8',
+                          borderRadius:5, fontFamily:'inherit', outline:'none',
+                          background:'rgba(255,255,255,0.6)' }} />
+          <div style={{ fontSize:10, opacity:0.5, lineHeight:1.5 }}>
+            github.com → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new → tick <strong>repo</strong>
+          </div>
+          <div style={{ display:'flex', gap:6 }}>
+            <TweakButton label="Save token" onClick={handleSaveToken} />
+            {ghToken && <TweakButton label="Cancel" secondary onClick={() => setShowTokenSetup(false)} />}
+          </div>
+        </div>
+      ) : (
+        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+            <label style={{ fontSize:11, display:'flex', alignItems:'center', gap:4, cursor:'pointer', flex:1 }}>
+              <input type="checkbox" checked={includeImages}
+                     onChange={e => setIncludeImages(e.target.checked)}
+                     style={{ margin:0 }} />
+              Include images
+            </label>
+            <button onClick={() => { setShowTokenSetup(true); setTokenInput(''); }}
+              style={{ fontSize:9.5, opacity:0.45, background:'none', border:'none',
+                       cursor:'pointer', fontFamily:'inherit', padding:0 }}>change token</button>
+          </div>
+          <TweakButton
+            label={
+              saveStatus === 'saving' ? '⏳ Saving…' :
+              saveStatus === 'done'   ? '✓ Saved — site updates in ~1 min' :
+              saveStatus.startsWith('error') ? '⚠️ ' + saveStatus.slice(6) :
+              '🚀 Save to GitHub'
+            }
+            onClick={saveStatus === 'saving' ? undefined : handleSave}
+          />
+          {saveStatus.startsWith('error') && (
+            <div style={{ fontSize:10, color:'#c0392b', lineHeight:1.5 }}>{saveStatus.slice(6)}</div>
+          )}
+          <TweakButton label={exported ? 'Downloaded ✓' : '⬇ Download (backup)'}
+                       secondary onClick={handleExport} />
+        </div>
+      )}
 
       <TweakSection label="Homepage" />
       <div style={{ fontSize: 10.5, opacity: 0.5, marginBottom: 8, lineHeight: 1.5 }}>

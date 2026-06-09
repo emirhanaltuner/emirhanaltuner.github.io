@@ -226,6 +226,10 @@ function TweaksPanel({ title = 'Tweaks', children }) {
   }, [open, clampToViewport]);
 
   React.useEffect(() => {
+    // Expose standalone toggle so an in-page admin button can open/close the
+    // panel without a host bridge (used on the live public site).
+    window.__activateTweaks = () => setOpen(true);
+    window.__deactivateTweaks = () => setOpen(false);
     const onMsg = (e) => {
       const t = e?.data?.type;
       if (t === '__activate_edit_mode') setOpen(true);
@@ -233,7 +237,11 @@ function TweaksPanel({ title = 'Tweaks', children }) {
     };
     window.addEventListener('message', onMsg);
     window.parent.postMessage({ type: '__edit_mode_available' }, '*');
-    return () => window.removeEventListener('message', onMsg);
+    return () => {
+      window.removeEventListener('message', onMsg);
+      delete window.__activateTweaks;
+      delete window.__deactivateTweaks;
+    };
   }, []);
 
   const dismiss = () => {
