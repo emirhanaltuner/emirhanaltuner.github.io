@@ -112,6 +112,9 @@ function useNarrow(bp) {
 function MediaGrid({ project, layout, tweaks, selectedId, onSelect, onChange }) {
   const narrow = useNarrow(820);
   const { columns, gridWidth, rowHeight, showGrid, showCoords, editLayout } = tweaks;
+  // The grid lines + coordinate numbers are an EDITING aid — only ever shown while
+  // Edit mode is on. Visitors (edit off) always see a clean page, never the overlay.
+  const overlayOn = showGrid && editLayout;
   const colW = gridWidth / columns;
   const blockRefs = React.useRef({});
   const [canvasH, setCanvasH] = React.useState(900);
@@ -134,9 +137,9 @@ function MediaGrid({ project, layout, tweaks, selectedId, onSelect, onChange }) 
         : ((b.type === "image" || b.type === "video") ? ratioH(b.w, b.ratio) : 80);
       max = Math.max(max, top + h);
     });
-    const floor = showGrid ? 1280 : 200;
+    const floor = overlayOn ? 1280 : 200;
     setCanvasH(Math.max(max + 80, floor));
-  }, [JSON.stringify(layout), columns, gridWidth, rowHeight, showGrid]);
+  }, [JSON.stringify(layout), columns, gridWidth, rowHeight, showGrid, editLayout]);
 
   // Arrow-key nudge for the selected block.
   React.useEffect(() => {
@@ -240,10 +243,10 @@ function MediaGrid({ project, layout, tweaks, selectedId, onSelect, onChange }) 
                   : b.type === "link"
                   ? <a className="gb-text gb-link" href={linkHref(b.href)}
                        target="_blank" rel="noopener noreferrer"
-                       style={{ fontSize: (b.fontSize || 15) + "px", lineHeight: b.lineHeight || 1.72 }}
+                       style={{ fontSize: (b.fontSize || 15) + "px", lineHeight: b.lineHeight || 1.72, textAlign: b.textAlign || "left" }}
                        dangerouslySetInnerHTML={{ __html: (b.body || []).join("\n\n").replace(/\n/g, "<br>") }}></a>
                   : <div className="gb-text"
-                         style={{ fontSize: (b.fontSize || 15) + "px", lineHeight: b.lineHeight || 1.72 }}
+                         style={{ fontSize: (b.fontSize || 15) + "px", lineHeight: b.lineHeight || 1.72, textAlign: b.textAlign || "left" }}
                          dangerouslySetInnerHTML={{ __html: (b.body || []).join("\n\n").replace(/\n/g, "<br>") }}></div>}
               </div>
             );
@@ -260,7 +263,7 @@ function MediaGrid({ project, layout, tweaks, selectedId, onSelect, onChange }) 
            onPointerDown={(e) => {
              if (editLayout && e.target.classList.contains("grid-canvas")) onSelect(null);
            }}>
-        {showGrid && (
+        {overlayOn && (
           <React.Fragment>
             <div className="grid-ovl grid-ovl-rows"></div>
             <div className="grid-ovl grid-ovl-cols">
@@ -313,11 +316,13 @@ function MediaGrid({ project, layout, tweaks, selectedId, onSelect, onChange }) 
                      target="_blank" rel="noopener noreferrer"
                      onClick={(e) => { if (editLayout) e.preventDefault(); }}
                      style={{ fontSize: (b.fontSize != null ? b.fontSize : 17) + "px",
-                              lineHeight: (b.lineHeight != null ? b.lineHeight : 1.72) }}
+                              lineHeight: (b.lineHeight != null ? b.lineHeight : 1.72),
+                              textAlign: b.textAlign || "left" }}
                      dangerouslySetInnerHTML={{ __html: (b.body || []).join("\n\n").replace(/\n/g, "<br>") }}></a>
                 : <div className="gb-text"
                        style={{ fontSize: (b.fontSize != null ? b.fontSize : 17) + "px",
-                                lineHeight: (b.lineHeight != null ? b.lineHeight : 1.72) }}
+                                lineHeight: (b.lineHeight != null ? b.lineHeight : 1.72),
+                                textAlign: b.textAlign || "left" }}
                        dangerouslySetInnerHTML={{ __html: (b.body || []).join("\n\n").replace(/\n/g, "<br>") }}></div>}
               {editLayout && <div className="gb-tag">{b.type} · {b.w}px · c{b.x} r{b.y}</div>}
               {editLayout && <div className="gb-hit" onPointerDown={(e) => startMove(e, b)}></div>}

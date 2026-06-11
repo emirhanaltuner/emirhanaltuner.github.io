@@ -155,6 +155,39 @@ const PROJECTS = [
     tags: "Online", location: "", disciplines: "online", links: [] },
 ];
 
+// ── Info pages (About / Contact) ──────────────────────────────────────────────────────────────────
+// Rendered through the SAME editable block grid as project detail pages (InfoGrid.jsx).
+// These defaults SEED the grid; once the author edits, the layout persists to
+// atelier-content.state.json under layouts["about"] / layouts["contact"] exactly like
+// a project. They are intentionally NOT part of PROJECTS so they stay out of the
+// Projects ledger, filters and homepage.
+const INFO_PAGES = [
+  { id: "about", title: "About", isInfo: true,
+    layout: [
+      { id: "bio", type: "text", w: 720, x: 1, y: 1, fontSize: 17, lineHeight: 1.72, body: [
+        "Emirhan Altuner is an Istanbul-based exhibition designer, scenographer and researcher with ten years of experience in cultural institutions. He is the Spatial Design and Production Manager at SALT, where he has been actively involved for the research, design, production, and installation since 2016. Working across both archival material and contemporary art, he develops spatial narratives through temporary structures, graphic systems, and adaptive reuse.",
+        "Alongside his design practice, he initiated <a data-goto=\"trash\" class=\"bio-link\"><em>Trash</em></a> in 2026, the program built from exhibition remnants accumulated over fifteen years of SALT's history, accompanied by a series of talks and workshops. The project extends his ongoing interest in alternative modes of circulating knowledge and material resources generated through exhibition-making.",
+        "Holding both bachelor's and master's degrees from the Istanbul Technical University (ITU), Faculty of Architecture, his master's thesis, <a href=\"https://tez.yok.gov.tr/UlusalTezMerkezi/tezDetay.jsp?id=dHnm5YtCeMaCBFt-loNKNg&no=Flm2FRjYRUH-gNNDDuyiVQ\" target=\"_blank\" rel=\"noopener\"><em>Aurama: A Kind of Optic Assistant in the Fiction-Space</em></a>, explores the physical and conceptual production of fictive spaces through film, theater, exhibition, and scenography from cinematographic and theoretical perspectives. He has been teaching at the Architectural Drawing Studio at Istanbul Bilgi University since 2023.",
+        "He was recognized as one of Turkey's Young Architects Under 40 by <a href=\"https://thecircle-o.com/en/gemss23\" target=\"_blank\" rel=\"noopener\">The Circle</a> in 2023.",
+      ] },
+      { id: "awards", type: "text", w: 720, x: 1, y: 26, fontSize: 15, lineHeight: 1.7, body: [
+        "<strong style=\"letter-spacing:.1em\">AWARDS AND RECOGNITIONS</strong>",
+        "<strong>2023 · The Circle, Istanbul</strong>\nGEMSS: Emerging Architects Selection and Exhibition. Selected as one of ten architects under 40 and exhibited in The Circle space from December 2023 to March 2024.",
+        "<strong>2015 · Istanbul Association of Architects in Private Practice</strong>\nS.O.S. Haydarpaşa Competition — Honorable Mention for project <em>Re-Time</em> [with Pelin Arabacıoğlu].",
+        "<strong>2015 · LIXIL Foundation, Japan</strong>\n5th International University Architectural Competition / First Phase — 3rd Prize for project <em>Hanged, A House for Enjoying the Harsh Cold</em> [with Gumwörk].",
+        "<strong>2014 · Architecture Education Association, Turkey</strong>\nProject Awards for Architecture Students — Jury's Special Award for project <em>Valley</em>.",
+      ] },
+    ] },
+  { id: "contact", title: "Contact", isInfo: true,
+    layout: [
+      { id: "intro", type: "text", w: 620, x: 1, y: 1, fontSize: 17, lineHeight: 1.72, body: [
+        "For project enquiries, collaborations, or just to say hello:",
+        "<a href=\"mailto:emirhanaltuner@gmail.com\">emirhanaltuner@gmail.com</a>",
+        "Also available on <a href=\"https://www.instagram.com/emirhanaltuner/\" target=\"_blank\" rel=\"noopener\">Instagram</a> and <a href=\"https://tr.linkedin.com/in/emirhan-altuner-29077465\" target=\"_blank\" rel=\"noopener\">LinkedIn</a>.",
+      ] },
+    ] },
+];
+
 // ── Durable content store ────────────────────────────────────────────────────
 // Every author edit — per-project layouts, in-place header edits, the "selected"
 // flag, and the draft/publish flag — persists to a PROJECT FILE sidecar
@@ -325,7 +358,9 @@ function App() {
     [allProjects, headers]
   );
   const go = (p, id) => { if (id) setSelId(id); setPage(p); setSelBlock(null); window.scrollTo(0, 0); };
-  const baseProject = allProjects.find((p) => p.id === selId) || allProjects[0];
+  const isInfoPage = page === "about" || page === "contact";
+  const infoBase = isInfoPage ? INFO_PAGES.find((ip) => ip.id === page) : null;
+  const baseProject = infoBase || allProjects.find((p) => p.id === selId) || allProjects[0];
   // Merge any saved header edits over the code project (links array is replaced wholesale).
   const headOverride = headers[baseProject.id] || {};
   // Merge selected override (if undefined in override, use base project's selected).
@@ -335,7 +370,8 @@ function App() {
     selected: selectedOverride !== undefined ? selectedOverride : baseProject.selected,
     published: publishedOverride !== undefined ? publishedOverride : (baseProject.published !== false) };
 
-  const defaultLayout = (pid) => (allProjects.find((p) => p.id === pid) || {}).layout || [];
+  const defaultLayout = (pid) =>
+    ((allProjects.find((p) => p.id === pid) || INFO_PAGES.find((ip) => ip.id === pid) || {}).layout) || [];
   const layout = layouts[project.id] || defaultLayout(project.id);
   const setLayout = (arr) => writeSection("layouts", (m) => ({ ...m, [project.id]: arr }));
 
@@ -491,7 +527,13 @@ function App() {
                 selectedId={t.editLayout ? selBlock : null}
                 onSelect={setSelBlock} onChange={actions.update} />
       )}
-      {(page === "about" || page === "contact") && <Info kind={page} go={go} />}
+      {isInfoPage && (
+        <InfoGrid page={page} project={project} layout={layout} tweaks={t}
+                  editing={t.editLayout}
+                  onHeaderChange={actions.updateHeader}
+                  selectedId={t.editLayout ? selBlock : null}
+                  onSelect={setSelBlock} onChange={actions.update} go={go} />
+      )}
       <GridTweaks page={page} t={t} setTweak={setTweak}
                   selected={selectedBlock} actions={actions} copied={copied}
                   projectSelected={project.selected} onProjectSelectedChange={actions.updateSelected}

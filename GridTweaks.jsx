@@ -227,6 +227,7 @@ window.NewProjectModal = NewProjectModal;
 
 function GridTweaks({ page, t, setTweak, selected, actions, copied, projectSelected, onProjectSelectedChange, projectPublished, onProjectPublishedChange, onCreateProject, homePinned, allProjects, homeTitleColors }) {
   const onDetail = page === "detail";
+  const onGrid = page === "detail" || page === "about" || page === "contact";
   const [showNewProjectModal, setShowNewProjectModal] = React.useState(false);
   const [exported, setExported] = React.useState(false);
   const fileInputRef = React.useRef(null);
@@ -418,7 +419,11 @@ function GridTweaks({ page, t, setTweak, selected, actions, copied, projectSelec
               Draft — hidden from the live site. Still listed (marked “draft”) while Edit mode is on.
             </div>
           )}
+        </React.Fragment>
+      )}
 
+      {onGrid && (
+        <React.Fragment>
           <TweakSection label="Overlay" />
           <TweakToggle label="Show grid" value={t.showGrid} onChange={(v) => setTweak("showGrid", v)} />
           <TweakToggle label="Coordinates" value={t.showCoords} onChange={(v) => setTweak("showCoords", v)} />
@@ -520,6 +525,9 @@ function GridTweaks({ page, t, setTweak, selected, actions, copied, projectSelec
                   <TweakSlider label="Line spacing" value={selected.lineHeight != null ? selected.lineHeight : 1.72}
                                min={1} max={2.6} step={0.1}
                                onChange={(v) => actions.update(selected.id, { lineHeight: v })} />
+                  <TweakRadio label="Align" value={selected.textAlign || "left"}
+                              options={["left", "center", "right"]}
+                              onChange={(v) => actions.update(selected.id, { textAlign: v })} />
                   <RichTextField
                     value={(selected.body || []).join("\n\n")}
                     onChange={(str) => actions.update(selected.id, { body: [str] })} />
@@ -532,6 +540,9 @@ function GridTweaks({ page, t, setTweak, selected, actions, copied, projectSelec
                   <TweakSlider label="Line spacing" value={selected.lineHeight != null ? selected.lineHeight : 1.72}
                                min={1} max={2.6} step={0.1}
                                onChange={(v) => actions.update(selected.id, { lineHeight: v })} />
+                  <TweakRadio label="Align" value={selected.textAlign || "left"}
+                              options={["left", "center", "right"]}
+                              onChange={(v) => actions.update(selected.id, { textAlign: v })} />
                   <RichTextField
                     value={(selected.body || []).join("\n\n")}
                     onChange={(str) => actions.update(selected.id, { body: [str] })} />
@@ -573,7 +584,7 @@ function GridTweaks({ page, t, setTweak, selected, actions, copied, projectSelec
         </React.Fragment>
       )}
 
-      {!onDetail && (
+      {!onGrid && (
         <div style={{ fontSize: 11.5, opacity: 0.6, padding: "4px 0", lineHeight: 1.5 }}>
           Open a project (Projects → any title) to compose its grid.
         </div>

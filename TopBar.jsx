@@ -38,7 +38,7 @@ function TopBar({ page, filter, setFilter, go, projects }) {
     });
     return [["all", "selected"], ...sorted.map((t) => [t, t])];
   }, [projects]);
-  const simple = [["projects", "projects"], ["about", "about"], ["contact", "contact"]];
+  const simple = [["projects", "works"], ["about", "about"], ["contact", "contact"]];
 
   const mode = page === "home" ? "home"
     : (page === "about" || page === "contact") ? "info"
@@ -58,7 +58,7 @@ function TopBar({ page, filter, setFilter, go, projects }) {
           <button className="mm-item" onClick={() => goM("about")}>about</button>
           <button className="mm-item" onClick={() => goM("contact")}>contact</button>
           <button className="mm-item" onClick={() => setProjOpen((o) => !o)}>
-            <span>projects</span>
+            <span>works</span>
             <span className={"mm-caret" + (projOpen ? " open" : "")}>{"\u2304"}</span>
           </button>
           {projOpen && (
