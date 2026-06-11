@@ -15,8 +15,8 @@ Every file in this project goes up together. The important ones:
 - `*.jsx` — the code for the site
 - `image-slot.js`, `tweaks-panel.jsx`
 - `atelier-content.state.json` — all your text & layouts
-- `.image-slots.state.json` — your images
-- `_ds/`, `images/`, `uploads/` — fonts, assets, dropped files
+- `image-slots.state.json` — your images (dropped photos, base64-encoded)
+- `_ds/`, `images/` — fonts and static assets
 
 > GitHub Pages serves `index.html` by default. So either rename
 > `Portfolio.html` → `index.html`, OR keep the name and your URL becomes
@@ -103,7 +103,7 @@ git push -u origin main
 
 1. Open this project in the editor (this tool) — your edit mode is here.
 2. Make changes: edit text, drop images, mark projects published/draft, etc.
-   They save into `atelier-content.state.json` and `.image-slots.state.json`.
+   They save into `atelier-content.state.json` and `image-slots.state.json`.
 3. Re-upload those changed files to GitHub (Option A: drag them into the repo
    again; Option B: `git add . && git commit -m "update" && git push`).
 4. GitHub Pages rebuilds in about a minute. Refresh your site to see it.
@@ -118,9 +118,9 @@ git push -u origin main
 - **Fonts:** the site currently falls back to *Space Grotesk* (free). To use the
   licensed *Founders Grotesk*, drop the `.otf` files into the path the CSS expects.
   Otherwise leave it — Space Grotesk looks clean and is fully licensed for web.
-- **Image file size:** images live inside `.image-slots.state.json`. If you add a
-  lot of large photos, that file gets big. GitHub warns past ~50 MB per file. If
-  you ever hit that, we can move images to separate files instead.
+- **Image file size:** images live inside `image-slots.state.json`. Currently ~12 MB
+  (well within GitHub's limits). If you keep adding large photos and it grows past
+  ~40 MB, ask to split it per-project for faster publishes.
 - **Load speed:** the site compiles itself in the visitor's browser (fine for a
   portfolio, just a beat slower on first load). If you ever want it instant, we can
   pre-build it — not necessary now.

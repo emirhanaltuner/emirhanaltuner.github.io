@@ -243,24 +243,84 @@ function persistContent(data) {
 }
 
 // ── GitHub API save ────────────────────────────────────────────────────────
-// Commits one file to the repo using the Contents API.
-async function ghUpdateFile(token, owner, repo, path, text) {
-  const base = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-  const heads = {
-    'Authorization': `Bearer ${token}`,
-    'Accept': 'application/vnd.github.v3+json',
-    'Content-Type': 'application/json'
-  };
-  const getRes = await fetch(base, { headers: heads });
-  if (!getRes.ok) throw new Error(`Cannot read ${path} (${getRes.status} — check token & repo name)`);
-  const { sha } = await getRes.json();
-  // Encode UTF-8 text as base64 (handles non-ASCII)
-  const b64 = btoa(unescape(encodeURIComponent(text)));
-  const putRes = await fetch(base, {
-    method: 'PUT', headers: heads,
-    body: JSON.stringify({ message: 'update portfolio content', content: b64, sha })
+// Small helper around the GitHub REST API with auth + error surfacing.
+async function ghApi(token, path, opts = {}) {
+  const res = await fetch(`https://api.github.com${path}`, {
+    ...opts,
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Accept': 'application/vnd.github+json',
+      'Content-Type': 'application/json',
+      ...(opts.headers || {}),
+    },
   });
-  if (!putRes.ok) { const e = await putRes.text(); throw new Error(`Failed to save ${path}: ${e}`); }
+  if (!res.ok) {
+    let msg = '';
+    try { msg = (await res.json()).message || ''; } catch (e) { try { msg = await res.text(); } catch (e2) {} }
+    const err = new Error(`${opts.method || 'GET'} ${path} → ${res.status} ${String(msg).slice(0, 160)}`);
+    err.status = res.status;
+    throw err;
+  }
+  return res.json();
+}
+
+// Turn a raw GitHub API error into a short, human instruction.
+function ghFriendlyError(e) {
+  const m = (e && e.message) || String(e);
+  const status = (e && e.status) || (/→ (\d{3})/.exec(m) || [])[1];
+  if (status == 401 || /bad credentials/i.test(m))
+    return 'GitHub token is invalid or expired. Click “change token”, generate a fresh token on GitHub, and paste it.';
+  if (status == 404)
+    return 'Repo not found — check the owner/repo name, or that the token can see this repo.';
+  if (status == 403)
+    return /rate limit/i.test(m) ? 'GitHub rate limit hit — wait a minute and try again.'
+      : 'Token lacks permission. It needs Contents: Read and write on this repo.';
+  if (status == 409 || status == 422)
+    return 'GitHub rejected the commit (the repo changed since last sync). Try again.';
+  return m;
+}
+
+// Commit one or more files to the repo in a SINGLE commit using the Git Data
+// API (blobs → tree → commit → ref). Unlike the Contents API, this handles
+// files well over 1 MB — the Contents API refuses to even read the existing
+// sha of a >1 MB file (403), which is why "include images" used to fail on the
+// ~12 MB image sidecar. Blobs support files up to 100 MB.
+//   files = [{ path, text }, …]
+async function ghCommitFiles(token, owner, repo, files, message, onStatus) {
+  // 1. Resolve the default branch.
+  const repoInfo = await ghApi(token, `/repos/${owner}/${repo}`);
+  const branch = repoInfo.default_branch || 'main';
+  // 2. Latest commit on that branch → base tree.
+  const ref = await ghApi(token, `/repos/${owner}/${repo}/git/ref/heads/${branch}`);
+  const latestSha = ref.object.sha;
+  const baseCommit = await ghApi(token, `/repos/${owner}/${repo}/git/commits/${latestSha}`);
+  const baseTree = baseCommit.tree.sha;
+  // 3. Upload each file as a blob (base64; handles non-ASCII + large payloads).
+  const treeItems = [];
+  for (const f of files) {
+    if (onStatus) onStatus(`Uploading ${f.path}…`);
+    const b64 = btoa(unescape(encodeURIComponent(f.text)));
+    const blob = await ghApi(token, `/repos/${owner}/${repo}/git/blobs`, {
+      method: 'POST',
+      body: JSON.stringify({ content: b64, encoding: 'base64' }),
+    });
+    treeItems.push({ path: f.path, mode: '100644', type: 'blob', sha: blob.sha });
+  }
+  // 4. New tree on top of the existing one.
+  const tree = await ghApi(token, `/repos/${owner}/${repo}/git/trees`, {
+    method: 'POST',
+    body: JSON.stringify({ base_tree: baseTree, tree: treeItems }),
+  });
+  // 5. New commit pointing at the new tree.
+  const commit = await ghApi(token, `/repos/${owner}/${repo}/git/commits`, {
+    method: 'POST',
+    body: JSON.stringify({ message: message || 'update portfolio content', tree: tree.sha, parents: [latestSha] }),
+  });
+  // 6. Move the branch ref forward.
+  await ghApi(token, `/repos/${owner}/${repo}/git/refs/heads/${branch}`, {
+    method: 'PATCH',
+    body: JSON.stringify({ sha: commit.sha }),
+  });
 }
 
 // Trigger a browser download of a text file (used by "Download site files").
@@ -469,18 +529,27 @@ function App() {
       const token = localStorage.getItem('gh_token') || '';
       const owner = localStorage.getItem('gh_owner') || 'emirhanaltuner';
       const repo  = localStorage.getItem('gh_repo')  || 'emirhanaltuner.github.io';
-      if (!token) { onStatus('error:No token — open settings first'); return; }
+      if (!token) { onStatus('error:No token saved. Click “change token” and paste a GitHub token.'); return; }
       try {
-        onStatus('Saving content…');
-        await ghUpdateFile(token, owner, repo, 'atelier-content.state.json', JSON.stringify(contentRef.current));
+        // Two independent commits: text always lands even if the image step has
+        // trouble. Both use the Git Data API so the ~12 MB image file works.
+        onStatus('Saving text…');
+        await ghCommitFiles(token, owner, repo,
+          [{ path: 'atelier-content.state.json', text: JSON.stringify(contentRef.current) }],
+          'update portfolio content');
         if (includeImages) {
-          onStatus('Saving images (this may take ~30 s)…');
+          onStatus('Reading images…');
           const r = await fetch('image-slots.state.json', { cache: 'no-store' });
-          if (r.ok) await ghUpdateFile(token, owner, repo, 'image-slots.state.json', await r.text());
+          if (r.ok) {
+            onStatus('Uploading images (this may take ~30 s)…');
+            await ghCommitFiles(token, owner, repo,
+              [{ path: 'image-slots.state.json', text: await r.text() }],
+              'update portfolio images', onStatus);
+          }
         }
         onStatus('done');
       } catch(e) {
-        onStatus('error:' + e.message);
+        onStatus('error:' + ghFriendlyError(e));
       }
     },
     ghSettings: {
