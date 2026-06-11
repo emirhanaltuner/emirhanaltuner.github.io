@@ -359,20 +359,105 @@
 <body>
   <div id="root"></div>
 
-  <!-- Hidden admin button — invisible to visitors, visible on hover bottom-left.
-       Opens the Tweaks panel so the site owner can edit content without Claude. -->
-  <button id="__admin_btn"
-    onclick="window.__activateTweaks && window.__activateTweaks()"
-    title="Edit site"
-    style="position:fixed;bottom:14px;left:14px;z-index:9998;width:26px;height:26px;
-           border-radius:50%;border:1.5px solid rgba(232,74,26,0.35);
-           background:rgba(232,74,26,0.06);color:rgba(232,74,26,0.5);
-           font-size:12px;cursor:pointer;opacity:0;transition:opacity 0.25s;
-           display:flex;align-items:center;justify-content:center;padding:0;
-           font-family:inherit;line-height:1">✏</button>
-  <style>
-    #__admin_btn:hover { opacity: 1 !important; }
-  </style>
+  <!-- Admin trigger — completely invisible 6×6px point, bottom-left corner.
+       No cursor change, no hover, no visual trace. Only the owner knows it's here. -->
+  <div onclick="__adminOpen()"
+       style="position:fixed;bottom:10px;left:10px;z-index:9998;
+              width:6px;height:6px;cursor:default;"></div>
+
+  <!-- Admin password modal -->
+  <div id="__admin_modal"
+    style="display:none;position:fixed;inset:0;z-index:9999;
+           background:rgba(245,240,235,0.88);
+           align-items:center;justify-content:center;">
+    <div style="background:#f5f0eb;border:1px solid #e0c4b8;border-radius:4px;
+                padding:32px 36px;width:270px;
+                display:flex;flex-direction:column;gap:16px;">
+      <input id="__admin_pw" type="password" placeholder="password"
+             style="font-family:'FoundersGrotesk','Space Grotesk',sans-serif;
+                    font-size:15px;font-weight:400;color:#1a1a1a;
+                    background:transparent;border:none;border-bottom:1px solid #e0c4b8;
+                    outline:none;padding:6px 0;width:100%;transition:border-color .15s ease;"
+             onfocus="this.style.borderColor='#e84a1a'"
+             onblur="this.style.borderColor='#e0c4b8'"
+             onkeydown="if(event.key==='Enter') __adminSubmit(); if(event.key==='Escape') __adminClose();" />
+      <div id="__admin_err"
+           style="font-size:11px;color:#e84a1a;opacity:0;
+                  transition:opacity .15s ease;margin-top:-8px;height:12px;">
+        incorrect password
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button onclick="__adminSubmit()"
+                style="font-family:'FoundersGrotesk','Space Grotesk',sans-serif;
+                       font-size:13px;font-weight:700;color:#f5f0eb;
+                       background:#e84a1a;border:none;border-radius:3px;
+                       padding:8px 20px;cursor:pointer;transition:opacity .15s ease;"
+                onmouseover="this.style.opacity='.8'"
+                onmouseout="this.style.opacity='1'">
+          enter
+        </button>
+        <button onclick="__adminClose()"
+                style="font-family:'FoundersGrotesk','Space Grotesk',sans-serif;
+                       font-size:13px;font-weight:400;color:#e84a1a;
+                       background:none;border:1px solid #e0c4b8;border-radius:3px;
+                       padding:8px 20px;cursor:pointer;transition:opacity .15s ease;"
+                onmouseover="this.style.opacity='.6'"
+                onmouseout="this.style.opacity='1'">
+          cancel
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Intercept __activateTweaks — any call (including console) is gated by __adminUnlocked.
+    // tweaks-panel.jsx does window.__activateTweaks = fn; the setter stores the real fn.
+    // The getter returns a wrapper that checks the flag, then resets it.
+    (function() {
+      var _real = null;
+      Object.defineProperty(window, '__activateTweaks', {
+        configurable: true,
+        get: function() {
+          return function() {
+            if (window.__adminUnlocked) {
+              window.__adminUnlocked = false;
+              _real && _real();
+            } else {
+              __adminOpen();
+            }
+          };
+        },
+        set: function(fn) { _real = fn; }
+      });
+    })();
+
+    function __adminOpen() {
+      var m = document.getElementById('__admin_modal');
+      m.style.display = 'flex';
+      setTimeout(function(){ document.getElementById('__admin_pw').focus(); }, 60);
+    }
+    function __adminClose() {
+      document.getElementById('__admin_modal').style.display = 'none';
+      document.getElementById('__admin_pw').value = '';
+      document.getElementById('__admin_err').style.opacity = '0';
+    }
+    function __adminSubmit() {
+      var pw = document.getElementById('__admin_pw').value;
+      if (pw === 'eEe4221519') {
+        __adminClose();
+        window.__adminUnlocked = true;   // one-time flag; wrapper resets it after use
+        window.__activateTweaks && window.__activateTweaks();
+      } else {
+        document.getElementById('__admin_err').style.opacity = '1';
+        document.getElementById('__admin_pw').value = '';
+        document.getElementById('__admin_pw').focus();
+      }
+    }
+    // Close on overlay click
+    document.getElementById('__admin_modal').addEventListener('click', function(e) {
+      if (e.target === this) __adminClose();
+    });
+  </script>
 
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>

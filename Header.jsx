@@ -1,7 +1,7 @@
 // Header — inner header shown on every screen except Home.
 // Portrait mark (left) + centered text nav. Click mark → home.
 function Header({ page, go }) {
-  const items = [["projects", "projects"], ["about", "about"], ["contact", "contact"]];
+  const items = [["projects", "works"], ["about", "about"], ["contact", "contact"]];
   const isActive = (k) =>
     page === k || (k === "projects" && (page === "projects" || page === "detail"));
   return (
