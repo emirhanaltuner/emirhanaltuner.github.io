@@ -292,55 +292,89 @@ function GridTweaks({ page, t, setTweak, selected, actions, copied, projectSelec
 
       <TweakSection label="Publish to web" />
 
-      {/* GitHub Save */}
-      {!ghToken || showTokenSetup ? (
-        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-          <div style={{ fontSize:10.5, opacity:0.6, lineHeight:1.5 }}>
-            {!ghToken ? 'Enter a GitHub token to save directly from the live site:' : 'Update your GitHub token:'}
-          </div>
-          <input type="password" placeholder="ghp_xxxxxxxxxxxx"
-                 value={tokenInput} onChange={e => setTokenInput(e.target.value)}
-                 onKeyDown={e => e.key === 'Enter' && tokenInput && handleSaveToken()}
-                 style={{ fontSize:11, padding:'5px 8px', border:'1px solid #e0c4b8',
-                          borderRadius:5, fontFamily:'inherit', outline:'none',
-                          background:'rgba(255,255,255,0.6)' }} />
-          <div style={{ fontSize:10, opacity:0.5, lineHeight:1.5 }}>
-            github.com → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new → tick <strong>repo</strong>
-          </div>
-          <div style={{ display:'flex', gap:6 }}>
-            <TweakButton label="Save token" onClick={handleSaveToken} />
-            {ghToken && <TweakButton label="Cancel" secondary onClick={() => setShowTokenSetup(false)} />}
-          </div>
+      {/* ── Step-by-step manual publish (always works) ── */}
+      <div style={{ display:'flex', flexDirection:'column', gap:8 }}>
+
+        {/* Step 1 */}
+        <div style={{ fontSize:10.5, fontWeight:600, opacity:0.55, letterSpacing:'0.04em', textTransform:'uppercase' }}>Step 1 — Download</div>
+        <TweakButton
+          label={exported ? '✓ Files downloaded' : '⬇ Download files for GitHub'}
+          onClick={handleExport}
+        />
+        <div style={{ fontSize:10, opacity:0.5, lineHeight:1.6 }}>
+          Downloads <strong>2 files</strong>: your content + images.
         </div>
-      ) : (
-        <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
-          <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-            <label style={{ fontSize:11, display:'flex', alignItems:'center', gap:4, cursor:'pointer', flex:1 }}>
-              <input type="checkbox" checked={includeImages}
-                     onChange={e => setIncludeImages(e.target.checked)}
-                     style={{ margin:0 }} />
-              Include images
-            </label>
-            <button onClick={() => { setShowTokenSetup(true); setTokenInput(''); }}
-              style={{ fontSize:9.5, opacity:0.45, background:'none', border:'none',
-                       cursor:'pointer', fontFamily:'inherit', padding:0 }}>change token</button>
-          </div>
-          <TweakButton
-            label={
-              saveStatus === 'saving' ? '⏳ Saving…' :
-              saveStatus === 'done'   ? '✓ Saved — site updates in ~1 min' :
-              saveStatus.startsWith('error') ? '⚠️ ' + saveStatus.slice(6) :
-              '🚀 Save to GitHub'
-            }
-            onClick={saveStatus === 'saving' ? undefined : handleSave}
-          />
-          {saveStatus.startsWith('error') && (
-            <div style={{ fontSize:10, color:'#c0392b', lineHeight:1.5 }}>{saveStatus.slice(6)}</div>
-          )}
-          <TweakButton label={exported ? 'Downloaded ✓' : '⬇ Download (backup)'}
-                       secondary onClick={handleExport} />
+
+        {/* Step 2 */}
+        <div style={{ fontSize:10.5, fontWeight:600, opacity:0.55, letterSpacing:'0.04em', textTransform:'uppercase', marginTop:4 }}>Step 2 — Upload to GitHub</div>
+        <a
+          href="https://github.com/emirhanaltuner/emirhanaltuner.github.io/upload/main"
+          target="_blank"
+          rel="noopener noreferrer"
+          style={{
+            display:'block', textAlign:'center', fontSize:11, fontWeight:600,
+            padding:'7px 10px', borderRadius:5, textDecoration:'none',
+            background:'#1a1a1a', color:'#f5f0eb', cursor:'pointer',
+          }}
+        >
+          Open GitHub upload page ↗
+        </a>
+        <div style={{ fontSize:10, opacity:0.5, lineHeight:1.6 }}>
+          Drag both downloaded files onto that page → <strong>Commit changes</strong>. Site updates in ~1 min.
         </div>
-      )}
+
+        {/* Divider */}
+        <div style={{ borderTop:'1px solid #e0c4b8', margin:'6px 0' }} />
+
+        {/* Advanced: direct API save */}
+        <div style={{ fontSize:10.5, fontWeight:600, opacity:0.55, letterSpacing:'0.04em', textTransform:'uppercase' }}>Quick save (direct API)</div>
+        {!ghToken || showTokenSetup ? (
+          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+            <div style={{ fontSize:10, opacity:0.5, lineHeight:1.5 }}>
+              {!ghToken ? 'Paste a GitHub token to try saving directly:' : 'Update your GitHub token:'}
+            </div>
+            <input type="password" placeholder="ghp_xxxxxxxxxxxx"
+                   value={tokenInput} onChange={e => setTokenInput(e.target.value)}
+                   onKeyDown={e => e.key === 'Enter' && tokenInput && handleSaveToken()}
+                   style={{ fontSize:11, padding:'5px 8px', border:'1px solid #e0c4b8',
+                            borderRadius:5, fontFamily:'inherit', outline:'none',
+                            background:'rgba(255,255,255,0.6)' }} />
+            <div style={{ fontSize:10, opacity:0.4, lineHeight:1.5 }}>
+              github.com → Settings → Developer settings → Personal access tokens → Tokens (classic) → Generate new → tick <strong>repo</strong>
+            </div>
+            <div style={{ display:'flex', gap:6 }}>
+              <TweakButton label="Save token" onClick={handleSaveToken} />
+              {ghToken && <TweakButton label="Cancel" secondary onClick={() => setShowTokenSetup(false)} />}
+            </div>
+          </div>
+        ) : (
+          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <label style={{ fontSize:11, display:'flex', alignItems:'center', gap:4, cursor:'pointer', flex:1 }}>
+                <input type="checkbox" checked={includeImages}
+                       onChange={e => setIncludeImages(e.target.checked)}
+                       style={{ margin:0 }} />
+                Include images
+              </label>
+              <button onClick={() => { setShowTokenSetup(true); setTokenInput(''); }}
+                style={{ fontSize:9.5, opacity:0.45, background:'none', border:'none',
+                         cursor:'pointer', fontFamily:'inherit', padding:0 }}>change token</button>
+            </div>
+            <TweakButton
+              label={
+                saveStatus === 'saving' ? '⏳ Saving…' :
+                saveStatus === 'done'   ? '✓ Saved' :
+                saveStatus.startsWith('error') ? '⚠️ Error — use Step 1↑' :
+                'Save to GitHub'
+              }
+              onClick={saveStatus === 'saving' ? undefined : handleSave}
+            />
+            {saveStatus.startsWith('error') && (
+              <div style={{ fontSize:10, color:'#c0392b', lineHeight:1.5 }}>{saveStatus.slice(6)}</div>
+            )}
+          </div>
+        )}
+      </div>
 
       <TweakSection label="Homepage" />
       <div style={{ fontSize: 10.5, opacity: 0.5, marginBottom: 8, lineHeight: 1.5 }}>
