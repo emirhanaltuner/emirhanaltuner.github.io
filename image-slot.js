@@ -190,9 +190,11 @@
     ':host([data-reframe]){z-index:10}' +
     ':host([data-reframe]) .spill{display:block}' +
     ':host([data-reframe]) .frame{box-shadow:0 0 0 2px #c96442}' +
+    '@keyframes __slotReveal{from{opacity:0}to{opacity:1}}' +
     '.empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;' +
     '  justify-content:center;gap:6px;text-align:center;padding:12px;box-sizing:border-box;' +
-    '  cursor:pointer;user-select:none}' +
+    '  cursor:pointer;user-select:none;' +
+    '  animation:__slotReveal 0.2s ease 0.7s both}' +
     '.empty svg{opacity:.45}' +
     '.empty .cap{max-width:90%;font-weight:500;letter-spacing:.01em}' +
     '.empty .sub{font-size:11px}' +

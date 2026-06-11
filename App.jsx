@@ -531,22 +531,23 @@ function App() {
       const repo  = localStorage.getItem('gh_repo')  || 'emirhanaltuner.github.io';
       if (!token) { onStatus('error:No token saved. Click “change token” and paste a GitHub token.'); return; }
       try {
-        // Two independent commits: text always lands even if the image step has
-        // trouble. Both use the Git Data API so the ~12 MB image file works.
-        onStatus('Saving text…');
-        await ghCommitFiles(token, owner, repo,
-          [{ path: 'atelier-content.state.json', text: JSON.stringify(contentRef.current) }],
-          'update portfolio content');
+        // Single atomic commit for content + images — avoids any GitHub ref
+        // conflict that two back-to-back commits could cause.
+        const files = [
+          { path: 'atelier-content.state.json', text: JSON.stringify(contentRef.current) },
+        ];
         if (includeImages) {
           onStatus('Reading images…');
-          const r = await fetch('image-slots.state.json', { cache: 'no-store' });
-          if (r.ok) {
-            onStatus('Uploading images (this may take ~30 s)…');
-            await ghCommitFiles(token, owner, repo,
-              [{ path: 'image-slots.state.json', text: await r.text() }],
-              'update portfolio images', onStatus);
-          }
+          const r = await fetch('image-slots.state.json');
+          if (!r.ok) throw new Error(`Could not read image file (HTTP ${r.status}). Try refreshing the editor and publishing again.`);
+          const imageText = await r.text();
+          if (!imageText || imageText.length < 10) throw new Error('Image file appears empty — try refreshing and publishing again.');
+          files.push({ path: 'image-slots.state.json', text: imageText });
+          onStatus(`Uploading content + images (${(imageText.length/1024/1024).toFixed(1)} MB — ~30 s)…`);
+        } else {
+          onStatus('Saving content…');
         }
+        await ghCommitFiles(token, owner, repo, files, 'update portfolio content', onStatus);
         onStatus('done');
       } catch(e) {
         onStatus('error:' + ghFriendlyError(e));
