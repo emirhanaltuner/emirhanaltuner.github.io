@@ -574,6 +574,11 @@ function App() {
         }
       } catch (e) {}
     },
+    // Download only the text/layout sidecar — use when only headers, layout, or
+    // copy changed (no new images). Fast: no 12 MB image file involved.
+    exportTextOnly: () => {
+      downloadFile("atelier-content.state.json", JSON.stringify(contentRef.current));
+    },
   };
 
   const selectedBlock = (t.editLayout ? layout.find((b) => b.id === selBlock) : null) || null;

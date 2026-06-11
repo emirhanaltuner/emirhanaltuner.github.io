@@ -230,6 +230,7 @@ function GridTweaks({ page, t, setTweak, selected, actions, copied, projectSelec
   const onGrid = page === "detail" || page === "about" || page === "contact";
   const [showNewProjectModal, setShowNewProjectModal] = React.useState(false);
   const [exported, setExported] = React.useState(false);
+  const [textExported, setTextExported] = React.useState(false);
   const fileInputRef = React.useRef(null);
   const uploadTargetRef = React.useRef(null);
 
@@ -254,6 +255,10 @@ function GridTweaks({ page, t, setTweak, selected, actions, copied, projectSelec
   const handleExport = () => {
     if (actions.exportContent) actions.exportContent();
     setExported(true); setTimeout(() => setExported(false), 2200);
+  };
+  const handleTextExport = () => {
+    if (actions.exportTextOnly) actions.exportTextOnly();
+    setTextExported(true); setTimeout(() => setTextExported(false), 2200);
   };
 
   // Trigger file picker for a specific project's home slot
@@ -302,7 +307,15 @@ function GridTweaks({ page, t, setTweak, selected, actions, copied, projectSelec
           onClick={handleExport}
         />
         <div style={{ fontSize:10, opacity:0.5, lineHeight:1.6 }}>
-          Downloads <strong>2 files</strong>: your content + images.
+          Downloads <strong>2 files</strong>: content + images (~12 MB, ~15 s).
+        </div>
+        <TweakButton
+          label={textExported ? '✓ Text downloaded' : '⬇ Download text only'}
+          secondary
+          onClick={handleTextExport}
+        />
+        <div style={{ fontSize:10, opacity:0.5, lineHeight:1.6 }}>
+          Just content — use this when you only changed text, headers, or layout (no images).
         </div>
 
         {/* Step 2 */}
