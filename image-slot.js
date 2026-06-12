@@ -76,7 +76,7 @@
 
   function load() {
     if (loadP) return loadP;
-    loadP = fetch(STATE_FILE)
+    loadP = fetch(STATE_FILE, { cache: 'no-cache' })
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
         // Merge: sidecar loses to any in-memory change that raced ahead of
@@ -96,8 +96,13 @@
         }
         tombstones.clear();
       })
-      .catch(() => {})
-      .then(() => { loaded = true; subs.forEach((fn) => fn()); });
+      .catch((err) => { console.warn('[image-slot] JSON load failed:', err); })
+      .then(() => {
+        loaded = true;
+        const n = Object.keys(slots).length;
+        console.log('[image-slot] loaded — ' + n + ' slot(s) from ' + STATE_FILE);
+        subs.forEach((fn) => fn());
+      });
     return loadP;
   }
 
