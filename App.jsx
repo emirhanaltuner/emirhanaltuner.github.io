@@ -201,16 +201,33 @@ const INFO_PAGES = [
 // moving the file or switching browsers no longer loses layouts or text.
 const CONTENT_FILE = "atelier-content.state.json";
 const LS_CACHE = "atelier:content:v1";
-const SECTIONS = ["layouts", "headers", "selected", "published", "projects", "homePinned", "homeTitleColors"];
+const SECTIONS = ["layouts", "headers", "selected", "published", "projects", "homePinned", "homeTitleColors", "filterOrder"];
 
-function blankContent() { return { layouts: {}, headers: {}, selected: {}, published: {}, projects: {}, homePinned: {}, homeTitleColors: {} }; }
+function blankContent() { return { layouts: {}, headers: {}, selected: {}, published: {}, projects: {}, homePinned: {}, homeTitleColors: {}, filterOrder: [] }; }
 // Default homepage order (used before the author makes any changes)
 const DEFAULT_HOME_ORDER = ["trash","no-records","one-and-many","90s-onstage","climavore","little-did-they-know","forward-march"];
-// Merge two content objects section-by-section; `over` wins per key.
+// Default top-bar category order. The four named categories, then 5 empty slots
+// the author can name later from the Tweaks panel (a reserved slot holds its
+// position so a future tag lands exactly where planned). Order is fully
+// author-controlled and persisted in content.filterOrder.
+const DEFAULT_FILTER_ORDER = ["exhibition design", "communication design", "program", "web projects", "", "", "", "", ""];
+const normFilterOrder = (m) => (Array.isArray(m) && m.length ? m.slice() : DEFAULT_FILTER_ORDER.slice());
+// Merge two content objects section-by-section; `over` wins per key. Array
+// sections (e.g. filterOrder) are replaced wholesale — a non-empty `over` wins,
+// otherwise a non-empty `base` is kept — because Object.assign would turn an
+// array into a {0:…,1:…} object and corrupt the order.
 function mergeContent(base, over) {
   const out = blankContent();
   base = base || {}; over = over || {};
-  for (const s of SECTIONS) out[s] = Object.assign({}, base[s] || {}, over[s] || {});
+  for (const s of SECTIONS) {
+    if (Array.isArray(base[s]) || Array.isArray(over[s]) || Array.isArray(out[s])) {
+      const o = Array.isArray(over[s]) ? over[s] : null;
+      const b = Array.isArray(base[s]) ? base[s] : null;
+      out[s] = (o && o.length) ? o.slice() : (b && b.length) ? b.slice() : (o || b || []);
+    } else {
+      out[s] = Object.assign({}, base[s] || {}, over[s] || {});
+    }
+  }
   return out;
 }
 // Read the offline cache, promoting any legacy per-key localStorage (v1) into it
@@ -402,6 +419,9 @@ function App() {
   const homePinned = Object.keys(rawHomePinned).length > 0
     ? rawHomePinned
     : Object.fromEntries(DEFAULT_HOME_ORDER.map((id, i) => [id, i]));
+  // filterOrder: ordered list of top-bar category names (empty strings are
+  // reserved future slots). Author-controlled; seeded from DEFAULT_FILTER_ORDER.
+  const filterOrder = normFilterOrder(content.filterOrder);
   // Code projects + any author-created projects (persisted in the sidecar).
   const allProjects = React.useMemo(
     () => [...PROJECTS, ...Object.values(content.projects || {})],
@@ -508,6 +528,31 @@ function App() {
       const out={}; sorted.forEach(([k],i)=>{out[k]=i;}); return out;
     }),
     updateHomeTitleColor: (id, color) => writeSection("homeTitleColors", (m) => ({ ...m, [id]: color })),
+    // ── Top-bar category order ─────────────────────────────────────────────────
+    // The list is the source of truth for filter ordering; the TopBar reads it.
+    // New tags not in the list auto-appear after it (handled in TopBar), so the
+    // top bar stays in sync as projects gain new disciplines.
+    moveFilterUp: (i) => writeSection("filterOrder", (m) => {
+      const a = normFilterOrder(m);
+      if (i > 0 && i < a.length) { const t = a[i-1]; a[i-1] = a[i]; a[i] = t; }
+      return a;
+    }),
+    moveFilterDown: (i) => writeSection("filterOrder", (m) => {
+      const a = normFilterOrder(m);
+      if (i >= 0 && i < a.length-1) { const t = a[i+1]; a[i+1] = a[i]; a[i] = t; }
+      return a;
+    }),
+    renameFilter: (i, name) => writeSection("filterOrder", (m) => {
+      const a = normFilterOrder(m);
+      if (i >= 0 && i < a.length) a[i] = String(name || "").toLowerCase().trim();
+      return a;
+    }),
+    addFilterSlot: () => writeSection("filterOrder", (m) => { const a = normFilterOrder(m); a.push(""); return a; }),
+    removeFilterSlot: (i) => writeSection("filterOrder", (m) => {
+      const a = normFilterOrder(m);
+      if (i >= 0 && i < a.length) a.splice(i, 1);
+      return a;
+    }),
     createProject: (data) => {
       const id = "new-" + Date.now().toString(36);
       const newProject = {
@@ -538,12 +583,17 @@ function App() {
         ];
         if (includeImages) {
           onStatus('Reading images…');
-          const r = await fetch('image-slots.state.json');
-          if (!r.ok) throw new Error(`Could not read image file (HTTP ${r.status}). Try refreshing the editor and publishing again.`);
-          const imageText = await r.text();
-          if (!imageText || imageText.length < 10) throw new Error('Image file appears empty — try refreshing and publishing again.');
-          files.push({ path: 'image-slots.state.json', text: imageText });
-          onStatus(`Uploading content + images (${(imageText.length/1024/1024).toFixed(1)} MB — ~30 s)…`);
+          // Per-project image shards (small) + their index. The big legacy
+          // image-slots.state.json is NOT re-sent — it's already on GitHub and
+          // never changes; new images live in the small shards.
+          const names = (window.__imageSlotStore ? await window.__imageSlotStore.listFiles() : []);
+          for (const fn of names) {
+            try {
+              const r = await fetch(fn, { cache: 'no-store' });
+              if (r.ok) { const txt = await r.text(); if (txt && txt.length > 1) files.push({ path: fn, text: txt }); }
+            } catch (e) {}
+          }
+          onStatus('Uploading content + images…');
         } else {
           onStatus('Saving content…');
         }
@@ -566,11 +616,20 @@ function App() {
     exportContent: async () => {
       downloadFile("atelier-content.state.json", JSON.stringify(contentRef.current));
       try {
-        const r = await fetch("image-slots.state.json", { cache: "no-store" });
-        if (r.ok) {
-          const txt = await r.text();
-          // brief gap so the browser doesn't drop the second download
-          setTimeout(() => downloadFile("image-slots.state.json", txt), 400);
+        // Per-project image shards + index (small files). The big legacy
+        // image-slots.state.json is already on GitHub and unchanged, so it is
+        // intentionally NOT re-downloaded here.
+        const names = (window.__imageSlotStore ? await window.__imageSlotStore.listFiles() : []);
+        let delay = 400;
+        for (const fn of names) {
+          try {
+            const r = await fetch(fn, { cache: "no-store" });
+            if (r.ok) {
+              const txt = await r.text();
+              const d = delay; delay += 400;
+              setTimeout(() => downloadFile(fn, txt), d);
+            }
+          } catch (e) {}
         }
       } catch (e) {}
     },
@@ -591,7 +650,7 @@ function App() {
 
   return (
     <div className={"ds-page app" + (t.editLayout ? " editing" : "")}>
-      <TopBar page={page} filter={filter} setFilter={setFilter} go={go} projects={mergedProjects} />
+      <TopBar page={page} filter={filter} setFilter={setFilter} go={go} projects={mergedProjects} filterOrder={filterOrder} />
       {page === "home" && <Home go={go} projects={mergedProjects} isPublished={isPublished} editing={t.editLayout} homePinned={homePinned} titleColors={content.homeTitleColors || {}} />}
       {page === "projects" && <Projects projects={mergedProjects} filter={filter} go={go}
                                          isPublished={isPublished} editing={t.editLayout} />}
@@ -614,7 +673,7 @@ function App() {
                   projectSelected={project.selected} onProjectSelectedChange={actions.updateSelected}
                   projectPublished={project.published} onProjectPublishedChange={actions.updatePublished}
                   onCreateProject={actions.createProject}
-                  homePinned={homePinned} allProjects={mergedProjects} homeTitleColors={content.homeTitleColors || {}} />
+                  homePinned={homePinned} allProjects={mergedProjects} homeTitleColors={content.homeTitleColors || {}} filterOrder={filterOrder} />
     </div>
   );
 }

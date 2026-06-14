@@ -5,10 +5,31 @@
 // Box widths: 100 → 1400px in 50px steps, so text/image/video blocks can be any size.
 const TWK_WIDTHS = [];
 for (let w = 100; w <= 1400; w += 50) TWK_WIDTHS.push(String(w));
-// Video frames: 16:9 / vertical 9:16, 4:3 / vertical 3:4, the SALT poster proportions, plus extras.
-const VID_RATIOS = ["16/9", "9/16", "4/3", "3/4", "117/83", "83/117", "3/2", "2/3", "1/1", "21/9", "16/6"];
-// Image frames: the common photographic ratios, each in horizontal AND vertical form.
-const IMG_RATIOS = ["3/2", "2/3", "4/3", "3/4", "16/9", "9/16", "5/4", "4/5", "1/1", "7/5", "5/7", "21/9"];
+// Media frames (shared by IMAGE and VIDEO so the two always offer the same set).
+// Square, then the common photographic ratios in horizontal AND vertical form,
+// the SALT poster proportions (117/83, 83/117), then panoramic strips 2:1–10:1
+// and their vertical counterparts 1:2–1:10.
+const MEDIA_RATIOS = [
+  "1/1",
+  "3/2", "2/3",
+  "4/3", "3/4",
+  "5/4", "4/5",
+  "7/5", "5/7",
+  "16/9", "9/16",
+  "117/83", "83/117",
+  "21/9", "16/6",
+  "2/1", "1/2",
+  "3/1", "1/3",
+  "4/1", "1/4",
+  "5/1", "1/5",
+  "6/1", "1/6",
+  "7/1", "1/7",
+  "8/1", "1/8",
+  "9/1", "1/9",
+  "10/1", "1/10",
+];
+const VID_RATIOS = MEDIA_RATIOS;
+const IMG_RATIOS = MEDIA_RATIOS;
 // RichTextField — textarea + a small formatting toolbar. Selecting text and tapping a
 // control wraps it in semantic HTML (the text block renders body via innerHTML, so the
 // preview updates live). Curated brand-leaning colors + an optional hex input.
@@ -225,7 +246,47 @@ function NewProjectModal({ onClose, onCreate }) {
 }
 window.NewProjectModal = NewProjectModal;
 
-function GridTweaks({ page, t, setTweak, selected, actions, copied, projectSelected, onProjectSelectedChange, projectPublished, onProjectPublishedChange, onCreateProject, homePinned, allProjects, homeTitleColors }) {
+// CategoryRow — one row in the top-bar category-order editor. Reorder arrows, an
+// editable name (commits on blur/Enter), a status badge, and a remove button.
+// An empty name is a "reserved" slot that simply holds its position until you
+// name it (so a future tag lands exactly where you planned).
+function CategoryRow({ i, name, total, used, actions }) {
+  const [val, setVal] = React.useState(name);
+  React.useEffect(() => { setVal(name); }, [name]);
+  const commit = () => {
+    const v = String(val || "").toLowerCase().trim();
+    if (v !== String(name || "")) actions.renameFilter(i, v);
+  };
+  const empty = !String(name || "").trim();
+  return (
+    <div style={{ display:"flex", alignItems:"center", gap:5, marginBottom:5 }}>
+      <div style={{ display:"flex", flexDirection:"column", gap:2 }}>
+        <button onClick={() => actions.moveFilterUp(i)} title="Move up"
+          style={{ background:"none", border:"1px solid #e0c4b8", borderRadius:3, cursor:"pointer",
+                   fontSize:9, padding:"1px 4px", opacity: i===0 ? 0.3 : 1 }}>▲</button>
+        <button onClick={() => actions.moveFilterDown(i)} title="Move down"
+          style={{ background:"none", border:"1px solid #e0c4b8", borderRadius:3, cursor:"pointer",
+                   fontSize:9, padding:"1px 4px", opacity: i===total-1 ? 0.3 : 1 }}>▼</button>
+      </div>
+      <input value={val} onChange={e => setVal(e.target.value)} onBlur={commit}
+             onKeyDown={e => { if (e.key === "Enter") { commit(); e.target.blur(); } }}
+             placeholder="empty slot — type a category…"
+             style={{ flex:1, minWidth:0, fontSize:11, padding:"4px 6px", borderRadius:4,
+                      border:"1px solid #e0c4b8", background:"rgba(255,255,255,0.6)",
+                      fontFamily:"inherit", color: empty ? "#9c4a2a" : "#1a1a1a", outline:"none" }} />
+      <span style={{ fontSize:9, width:46, textAlign:"center", flexShrink:0, letterSpacing:".02em",
+                     color: empty ? "#b7a99e" : used ? "#1f8a5b" : "#b7a99e" }}>
+        {empty ? "reserved" : used ? "live" : "unused"}
+      </span>
+      <button onClick={() => actions.removeFilterSlot(i)} title="Remove slot"
+        style={{ background:"none", border:"1px solid #e84a1a", borderRadius:3, cursor:"pointer",
+                 color:"#e84a1a", fontSize:11, padding:"2px 5px", flexShrink:0 }}>✕</button>
+    </div>
+  );
+}
+window.CategoryRow = CategoryRow;
+
+function GridTweaks({ page, t, setTweak, selected, actions, copied, projectSelected, onProjectSelectedChange, projectPublished, onProjectPublishedChange, onCreateProject, homePinned, allProjects, homeTitleColors, filterOrder }) {
   const onDetail = page === "detail";
   const onGrid = page === "detail" || page === "about" || page === "contact";
   const [showNewProjectModal, setShowNewProjectModal] = React.useState(false);
@@ -286,6 +347,20 @@ function GridTweaks({ page, t, setTweak, selected, actions, copied, projectSelec
   // All projects available to pin (published OR in edit mode)
   const available = (allProjects || []).filter(p => p.id && p.title);
   const unpinnedAvailable = available.filter(p => !pinnedIds.includes(p.id));
+
+  // Tags actually used by a project right now — drives the live/unused badge in
+  // the category editor.
+  const usedTags = React.useMemo(() => {
+    const s = new Set();
+    (allProjects || []).forEach(p => {
+      (p.disciplines || p.tags || "").split(",").forEach(tg => {
+        const n = tg.trim().toLowerCase();
+        if (n) s.add(n);
+      });
+    });
+    return s;
+  }, [allProjects]);
+  const catOrder = filterOrder || [];
 
 
 
@@ -447,6 +522,16 @@ function GridTweaks({ page, t, setTweak, selected, actions, copied, projectSelec
           </select>
         </div>
       )}
+
+      <TweakSection label="Categories (top bar)" />
+      <div style={{ fontSize: 10.5, opacity: 0.55, marginBottom: 8, lineHeight: 1.5 }}>
+        Order of the filter links along the top of the site. <strong>live</strong> = a project uses it &middot; <strong>unused</strong> = named but no project yet &middot; <strong>reserved</strong> = empty slot holding a spot for later. Any new tag you add to a project shows up automatically after this list.
+      </div>
+      {catOrder.map((name, i) => (
+        <CategoryRow key={i} i={i} name={name} total={catOrder.length}
+                     used={usedTags.has(String(name || "").toLowerCase().trim())} actions={actions} />
+      ))}
+      <TweakButton label="+ Add category slot" secondary onClick={() => actions.addFilterSlot()} />
 
       <TweakSection label="Projects" />
       <TweakButton label="+ Create project" secondary onClick={() => setShowNewProjectModal(true)} />

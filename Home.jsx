@@ -68,7 +68,7 @@ function Home({ go, projects, isPublished, editing, homePinned, titleColors }) {
             const src = HOME_IMAGES[p.id];
             return (
               <image-slot key={p.id} id={"home-" + p.id} shape="rect" fit="cover" position="50% 50%"
-                          {...(src ? { src } : {})} data-store-width="2600"
+                          {...(src ? { src } : {})} data-store-width="2600" data-store="home"
                           class={idx === i ? "on" : ""}
                           placeholder={"drop image — " + p.title}></image-slot>
             );

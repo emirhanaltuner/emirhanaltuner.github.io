@@ -60,106 +60,175 @@
   // go still — better to reject than surprise.
   const ACCEPT = ['image/png', 'image/jpeg', 'image/webp', 'image/avif'];
 
-  // ── Shared sidecar store ────────────────────────────────────────────────
-  // One fetch + immediate write-on-change for every <image-slot> on the
-  // page. Reads via fetch() so viewing works anywhere the HTML and sidecar
-  // are served together; writes go through window.omelette.writeFile, which
-  // the host allowlists to *.state.json basenames only.
-  const subs = new Set();
-  let slots = {};
-  // ids explicitly cleared before the sidecar fetch resolved — otherwise
-  // the merge below can't tell "never set" from "just deleted" and would
-  // resurrect the sidecar's stale value.
-  const tombstones = new Set();
-  let loaded = false;
-  let loadP = null;
+  // ── Sharded sidecar store ───────────────────────────────────────────────
+  // Images are stored PER GROUP in small img-<store>.state.json files instead
+  // of one combined file, because the host's writeFile silently fails once a
+  // single *.state.json grows past ~13 MB — which is exactly why newly dropped
+  // images stopped persisting. Each <image-slot> names its group through the
+  // `data-store` attribute (the page sets it to the project id, or "home").
+  // The old combined file is still READ as a fallback so images saved before
+  // the split keep showing with zero migration.
+  const LEGACY_FILE = STATE_FILE;             // 'image-slots.state.json'
+  const INDEX_FILE  = 'img-index.state.json';
+  const fileFor = (store) =>
+    'img-' + String(store || 'misc').replace(/[^a-z0-9_-]/gi, '_') + '.state.json';
 
-  function load() {
-    if (loadP) return loadP;
-    loadP = fetch(STATE_FILE, { cache: 'no-cache' })
+  const subs = new Set();
+
+  // Legacy combined file: fetched once, read-only fallback for old images.
+  let legacy = {};
+  let legacyP = null;
+  function loadLegacy() {
+    if (legacyP) return legacyP;
+    legacyP = fetch(LEGACY_FILE, { cache: 'no-cache' })
       .then((r) => (r.ok ? r.json() : null))
-      .then((j) => {
-        // Merge: sidecar loses to any in-memory change that raced ahead of
-        // the fetch (drop or clear) so neither is clobbered by hydration.
-        if (j && typeof j === 'object') {
-          const merged = Object.assign({}, j, slots);
-          // A framing-only write that raced ahead of hydration must not
-          // drop a user image that's only on disk — inherit u from the
-          // sidecar for any in-memory entry that lacks one.
-          for (const k in slots) {
-            if (merged[k] && !merged[k].u && j[k]) {
-              merged[k].u = typeof j[k] === 'string' ? j[k] : j[k].u;
-            }
-          }
-          for (const id of tombstones) delete merged[id];
-          slots = merged;
-        }
-        tombstones.clear();
-      })
-      .catch((err) => { console.warn('[image-slot] JSON load failed:', err); })
-      .then(() => {
-        loaded = true;
-        const n = Object.keys(slots).length;
-        console.log('[image-slot] loaded — ' + n + ' slot(s) from ' + STATE_FILE);
-        subs.forEach((fn) => fn());
-      });
-    return loadP;
+      .then((j) => { if (j && typeof j === 'object') legacy = j; })
+      .catch(() => {});
+    return legacyP;
   }
 
-  // Serialize writes so two near-simultaneous drops on different slots
-  // can't reorder at the backend and leave the sidecar with only the
-  // first. A save requested mid-flight just marks dirty and re-fires on
-  // completion with the then-current slots.
-  let saving = false;
-  let saveDirty = false;
-  function save() {
-    if (saving) { saveDirty = true; return; }
+  // Per-store in-memory state.
+  const stores = {};   // store -> { slots, tombstones, loaded, loadP, saving, saveDirty }
+  function st(store) {
+    store = store || 'misc';
+    if (!stores[store]) stores[store] =
+      { slots: {}, tombstones: new Set(), loaded: false, loadP: null, saving: false, saveDirty: false };
+    return stores[store];
+  }
+
+  function loadStore(store) {
+    const s = st(store);
+    if (s.loadP) return s.loadP;
+    s.loadP = Promise.all([
+      loadLegacy(),
+      fetch(fileFor(store), { cache: 'no-cache' })
+        .then((r) => (r.ok ? r.json() : null)).catch(() => null),
+    ]).then(function (res) {
+      const j = res[1];
+      // Merge: shard loses to any in-memory change that raced ahead of the
+      // fetch (drop or clear) so neither is clobbered by hydration.
+      if (j && typeof j === 'object') {
+        const merged = Object.assign({}, j, s.slots);
+        for (const k in s.slots) {
+          if (merged[k] && !merged[k].u && j[k]) {
+            merged[k].u = typeof j[k] === 'string' ? j[k] : j[k].u;
+          }
+        }
+        for (const id of s.tombstones) delete merged[id];
+        s.slots = merged;
+      }
+      s.tombstones.clear();
+    }).catch(function (err) {
+      console.warn('[image-slot] load failed for store "' + store + '":', err);
+    }).then(function () {
+      s.loaded = true;
+      console.log('[image-slot] store "' + store + '" loaded — ' +
+        Object.keys(s.slots).length + ' slot(s)');
+      subs.forEach((fn) => fn());
+    });
+    return s.loadP;
+  }
+
+  // Index of stores that have been written — lets the publish/download flow
+  // enumerate every shard without scanning the DOM.
+  let indexSet = null;
+  let indexP = null;
+  function loadIndex() {
+    if (indexP) return indexP;
+    indexP = fetch(INDEX_FILE, { cache: 'no-cache' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { indexSet = new Set(j && Array.isArray(j.stores) ? j.stores : []); })
+      .catch(() => { indexSet = new Set(); });
+    return indexP;
+  }
+
+  // Serialized per-store writer; coalesces rapid edits to the same store.
+  function saveStore(store) {
+    const s = st(store);
     const w = window.omelette && window.omelette.writeFile;
     if (!w) return;
-    saving = true;
-    Promise.resolve(w(STATE_FILE, JSON.stringify(slots)))
+    if (s.saving) { s.saveDirty = true; return; }
+    s.saving = true;
+    Promise.resolve(w(fileFor(store), JSON.stringify(s.slots)))
       .catch(() => {})
-      .then(() => { saving = false; if (saveDirty) { saveDirty = false; save(); } });
+      .then(() => loadIndex())
+      .then(() => {
+        if (indexSet && !indexSet.has(store)) {
+          indexSet.add(store);
+          return Promise.resolve(w(INDEX_FILE, JSON.stringify({ stores: [...indexSet] }))).catch(() => {});
+        }
+      })
+      .then(() => { s.saving = false; if (s.saveDirty) { s.saveDirty = false; saveStore(store); } });
   }
 
   const S_MAX = 5;
   const clampS = (s) => Math.max(1, Math.min(S_MAX, s));
 
-  // Normalize a stored slot value. Pre-reframe sidecars stored a bare
-  // data-URL string; newer ones store {u, s, x, y}. Either shape is valid.
-  function getSlot(id) {
-    const v = slots[id];
-    if (!v) return null;
+  // Normalize a stored slot value. Pre-reframe stores held a bare data-URL
+  // string; newer ones hold {u, s, x, y}. Falls back to the legacy combined
+  // file for images saved before the per-store split. A {__cleared:true}
+  // marker masks a legacy image the user has since removed.
+  function getSlot(store, id) {
+    let v = st(store).slots[id];
+    if (v && v.__cleared) return null;
+    if (v == null) v = legacy[id];
+    if (v == null) return null;
     return typeof v === 'string' ? { u: v, s: 1, x: 0, y: 0 } : v;
   }
 
-  function setSlot(id, val) {
+  function setSlot(store, id, val) {
     if (!id) return;
-    if (val) { slots[id] = val; tombstones.delete(id); }
-    else { delete slots[id]; if (!loaded) tombstones.add(id); }
+    const s = st(store);
+    if (val) { s.slots[id] = val; s.tombstones.delete(id); }
+    else if (legacy[id] != null) { s.slots[id] = { __cleared: true }; }  // mask legacy image
+    else { delete s.slots[id]; if (!s.loaded) s.tombstones.add(id); }
     subs.forEach((fn) => fn());
     // A drop is rare + high-value — write immediately so nav-away can't lose
-    // it. Gate on the initial read so we don't overwrite a sidecar we haven't
-    // merged yet; the merge in load() keeps this change once the read lands.
-    if (loaded) save(); else load().then(save);
+    // it. Gate on the initial read so we don't overwrite a shard we haven't
+    // merged yet; the merge in loadStore() keeps this change once it lands.
+    if (s.loaded) saveStore(store); else loadStore(store).then(() => saveStore(store));
   }
+
+  // Exposed so the page's publish/download code can list every image file.
+  window.__imageSlotStore = {
+    indexFile: INDEX_FILE,
+    legacyFile: LEGACY_FILE,
+    fileFor: fileFor,
+    listFiles: function () {
+      return loadIndex().then(function () {
+        const out = [INDEX_FILE];
+        (indexSet ? [...indexSet] : []).forEach((s) => out.push(fileFor(s)));
+        return out;
+      });
+    },
+  };
 
   // ── Image downscale ─────────────────────────────────────────────────────
   // Encode through a canvas so the sidecar carries resized bytes, not the
   // raw upload. Longest side is capped at 2× the slot's rendered width
   // (retina) and at MAX_DIM. WebP keeps alpha and is ~10× smaller than PNG
-  // for photos, so there's no need for per-image format picking.
+  // for photos. The result is then stepped down in quality/size until it fits
+  // WRITE_LIMIT, because each image is saved to its own file and the host
+  // rejects a writeFile larger than ~1.5 MB.
+  const WRITE_LIMIT = 1.3 * 1024 * 1024;
   async function toDataUrl(file, targetW) {
     const bitmap = await createImageBitmap(file);
     try {
-      const cap = Math.min(MAX_DIM, Math.max(1, Math.round(targetW * 2)) || MAX_DIM);
-      const scale = Math.min(1, cap / Math.max(bitmap.width, bitmap.height));
-      const w = Math.max(1, Math.round(bitmap.width * scale));
-      const h = Math.max(1, Math.round(bitmap.height * scale));
-      const canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
-      return canvas.toDataURL('image/webp', 0.85);
+      let cap = Math.min(MAX_DIM, Math.max(1, Math.round(targetW * 2)) || MAX_DIM);
+      let q = 0.85;
+      let url = '';
+      for (let i = 0; i < 8; i++) {
+        const scale = Math.min(1, cap / Math.max(bitmap.width, bitmap.height));
+        const w = Math.max(1, Math.round(bitmap.width * scale));
+        const h = Math.max(1, Math.round(bitmap.height * scale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(bitmap, 0, 0, w, h);
+        url = canvas.toDataURL('image/webp', q);
+        if (url.length <= WRITE_LIMIT) break;
+        if (q > 0.6) q -= 0.1; else cap = Math.round(cap * 0.82);
+      }
+      return url;
     } finally {
       bitmap.close && bitmap.close();
     }
@@ -283,7 +352,7 @@
           this._exitReframe(false);
           this._gen++;
           this._local = null;
-          if (this.id) setSlot(this.id, null); else this._render();
+          if (this.id) setSlot(this._storeName(), this.id, null); else this._render();
         }
       });
       this._input.addEventListener('change', () => {
@@ -406,7 +475,7 @@
       // frame's clamp range.
       this._ro = new ResizeObserver(() => this._render());
       this._ro.observe(this);
-      load();
+      loadStore(this._storeName());
       this._render();
     }
 
@@ -449,6 +518,11 @@
     }
 
     attributeChangedCallback() { if (this.shadowRoot) this._render(); }
+
+    // Each image lives in its OWN img-<id>.state.json file, so no single file
+    // can grow past the host's ~1.5 MB writeFile ceiling (which is what made
+    // newly dropped images silently fail to save). The store key IS the slot id.
+    _storeName() { return this.id || 'misc'; }
 
     // handleEvent — one listener object for all four drag events keeps the
     // add/remove symmetric and the depth counter correct.
@@ -494,7 +568,7 @@
         // or decode failure leaves the in-progress crop untouched.
         this._exitReframe(false);
         const val = { u: url, s: 1, x: 0, y: 0 };
-        setSlot(this.id || '', val);
+        setSlot(this._storeName(), this.id || '', val);
         // Keep a session-local copy for id-less slots so the drop still
         // shows, even though it cannot persist.
         if (!this.id) { this._local = val; this._render(); }
@@ -579,7 +653,7 @@
       if (this._userUrl) v.u = this._userUrl;
       // Framing-only (no u) persists too so an author-src slot remembers its
       // crop; clearing the sidecar still falls through to src=.
-      if (this.id) setSlot(this.id, v);
+      if (this.id) setSlot(this._storeName(), this.id, v);
       else { this._local = v; }
     }
 
@@ -611,7 +685,7 @@
       // tool, so its value isn't guaranteed canvas-originated — only accept
       // data:image/ URLs from it. The `src` attribute is author-controlled
       // (Claude wrote it into the HTML) so it passes through unchanged.
-      let stored = this.id ? getSlot(this.id) : this._local;
+      let stored = this.id ? getSlot(this._storeName(), this.id) : this._local;
       if (stored && stored.u && !/^data:image\//i.test(stored.u)) stored = null;
       const srcAttr = this.getAttribute('src') || '';
       this._userUrl = (stored && stored.u) || null;

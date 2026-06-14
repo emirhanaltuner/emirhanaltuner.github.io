@@ -5,7 +5,7 @@
 //   • about / contact     → simple nav CENTER with the active item highlighted + caret
 // The header is absolutely positioned over the top band so each page's content can
 // begin at a fixed offset (250px / 220px) below it.
-function TopBar({ page, filter, setFilter, go, projects }) {
+function TopBar({ page, filter, setFilter, go, projects, filterOrder }) {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [projOpen, setProjOpen] = React.useState(false);
   // Add a subtle border when page is scrolled
@@ -15,29 +15,34 @@ function TopBar({ page, filter, setFilter, go, projects }) {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
-  // Derive filter list dynamically from all project tags — "selected" is always first,
-  // then every unique tag found across projects, lowercased and sorted alphabetically.
+  // Derive filter list dynamically from all project tags. "selected" is always
+  // first; the rest follow the author-controlled order in `filterOrder` (set
+  // from the Tweaks panel). Any tag a project uses that ISN'T in filterOrder
+  // auto-appears after the ordered ones (alphabetically) — so the top bar stays
+  // in sync when projects gain new disciplines.
   const filters = React.useMemo(() => {
-    const PREFERRED = ["scenography", "communication design", "visual communication", "program", "online"];
+    const orderMap = {};
+    (filterOrder || []).forEach((name, i) => {
+      const n = String(name || "").toLowerCase().trim();
+      if (n && !(n in orderMap)) orderMap[n] = i;
+    });
     const seen = new Set();
     (projects || []).forEach((p) => {
       const source = p.disciplines || p.tags || "";
       if (!source) return;
       source.split(",").forEach((t) => {
         const tag = t.trim().toLowerCase();
-        if (tag !== "production") seen.add(tag);
+        if (tag && tag !== "production") seen.add(tag);
       });
     });
     const sorted = [...seen].sort((a, b) => {
-      const ai = PREFERRED.indexOf(a);
-      const bi = PREFERRED.indexOf(b);
-      if (ai === -1 && bi === -1) return a.localeCompare(b);
-      if (ai === -1) return 1;
-      if (bi === -1) return -1;
+      const ai = a in orderMap ? orderMap[a] : Infinity;
+      const bi = b in orderMap ? orderMap[b] : Infinity;
+      if (ai === bi) return a.localeCompare(b);
       return ai - bi;
     });
     return [["all", "selected"], ...sorted.map((t) => [t, t])];
-  }, [projects]);
+  }, [projects, filterOrder]);
   const simple = [["projects", "works"], ["about", "about"], ["contact", "contact"]];
 
   const mode = page === "home" ? "home"
@@ -45,6 +50,9 @@ function TopBar({ page, filter, setFilter, go, projects }) {
     : "filter"; // projects + detail
 
   const pick = (k) => { setFilter(k); go("projects"); };
+  // Navigating to projects from the plain nav (home/about/contact) always
+  // resets the filter to "selected" (all) so you land on the full list.
+  const goProjects = () => { setFilter("all"); go("projects"); };
 
   // Mobile hamburger menu — about / contact / projects (expands to categories)
   const goM = (p, id) => { setMenuOpen(false); setProjOpen(false); go(p, id); };
@@ -81,7 +89,7 @@ function TopBar({ page, filter, setFilter, go, projects }) {
 
   const logo = (
     <button className="topbar-logo" onClick={() => go("home")} aria-label="home">
-      <image-slot id="home-logo" shape="rect" style={{ pointerEvents: "none" }}></image-slot>
+      <image-slot id="home-logo" shape="rect" data-store="home" style={{ pointerEvents: "none" }}></image-slot>
     </button>
   );
 
@@ -103,7 +111,7 @@ function TopBar({ page, filter, setFilter, go, projects }) {
       {simple.map(([k, label]) => {
         const active = mode === "info" && page === k;
         return (
-          <button key={k} className="tf" onClick={() => go(k)}>
+          <button key={k} className="tf" onClick={() => k === "projects" ? goProjects() : go(k)}>
             <Label text={label} />
             {active && <span className="caret">{"\u2304"}</span>}
           </button>

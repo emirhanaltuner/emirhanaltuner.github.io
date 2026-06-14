@@ -27,7 +27,7 @@ function Projects({ projects, filter, go, isPublished, editing }) {
               {p.title}
               {draft && <span className="draft-tag">draft</span>}
             </div>
-            <div className="w-yr" style={{ textAlign: "center", transform: "translateX(150px)" }}>{p.year}</div>
+            <div className="w-yr" style={{ textAlign: "center", transform: "translateX(100px)" }}>{p.year}</div>
             <div className="w-tags" style={{ textAlign: "left" }}>{p.disciplines || p.tags}</div>
           </div>
         );

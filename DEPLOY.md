@@ -103,10 +103,13 @@ git push -u origin main
 
 1. Open this project in the editor (this tool) — your edit mode is here.
 2. Make changes: edit text, drop images, mark projects published/draft, etc.
-   They save into `atelier-content.state.json` and `image-slots.state.json`.
-3. Re-upload those changed files to GitHub (Option A: drag them into the repo
-   again; Option B: `git add . && git commit -m "update" && git push`).
-4. GitHub Pages rebuilds in about a minute. Refresh your site to see it.
+   Text/layout saves into `atelier-content.state.json`. Each NEW dropped image
+   saves into its own small `img-<slot>.state.json` file (listed in
+   `img-index.state.json`). Older images still live in `image-slots.state.json`.
+3. Click **Download files for GitHub** — it grabs `atelier-content.state.json`,
+   `img-index.state.json`, and only the small image files that changed.
+4. Drop those into the repo (GitHub Desktop shows exactly which changed) and
+   commit/push. GitHub Pages rebuilds in about a minute.
 
 > The live public site is **view-only** for visitors — the editing bridge only
 > works inside this editor, so nobody can change your content on the web.
@@ -118,9 +121,11 @@ git push -u origin main
 - **Fonts:** the site currently falls back to *Space Grotesk* (free). To use the
   licensed *Founders Grotesk*, drop the `.otf` files into the path the CSS expects.
   Otherwise leave it — Space Grotesk looks clean and is fully licensed for web.
-- **Image file size:** images live inside `image-slots.state.json`. Currently ~12 MB
-  (well within GitHub's limits). If you keep adding large photos and it grows past
-  ~40 MB, ask to split it per-project for faster publishes.
+- **Image storage:** each dropped image is saved to its OWN small
+  `img-<slot>.state.json` file (kept under ~1.3 MB so the editor can always
+  write it). The old combined `image-slots.state.json` is still read as a
+  fallback for images saved before this change — leave it on GitHub. This is
+  why newly added images now publish reliably: no single file can get too big.
 - **Load speed:** the site compiles itself in the visitor's browser (fine for a
   portfolio, just a beat slower on first load). If you ever want it instant, we can
   pre-build it — not necessary now.

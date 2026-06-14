@@ -60,7 +60,7 @@ function useVimeoPoster(id, fallback) {
   return src;
 }
 
-function GridVideo({ url, editing, posterId }) {
+function GridVideo({ url, editing, posterId, store }) {
   const [play, setPlay] = React.useState(false);
   const v = parseVideo(url);
   // Vimeo's TRUE-ratio thumbnail (matches vertical/portrait videos) is fetched from its
@@ -88,7 +88,7 @@ function GridVideo({ url, editing, posterId }) {
     <div className="gv-facade">
       {auto && <img className="gv-poster" src={auto} alt="" onError={(e) => { e.target.style.display = "none"; }} />}
       <image-slot id={posterId} class="gv-poster-slot" shape="rect" fit="cover"
-                  position="50% 50%" data-store-width="1600"
+                  position="50% 50%" data-store-width="1600" data-store={store}
                   placeholder="drop poster image"></image-slot>
       <button className="gv-play-btn" aria-label="Play video"
               onClick={(e) => { if (editing) return; e.stopPropagation(); setPlay(true); }}>
@@ -227,7 +227,7 @@ function MediaGrid({ project, layout, tweaks, selectedId, onSelect, onChange }) 
                   ? <React.Fragment>
                       <div className="gb-imgwrap" style={{ aspectRatio: b.ratio || "3/2" }}>
                         <image-slot id={project.id + "-" + b.id} shape="rounded" radius="2"
-                                    data-store-width="2200" placeholder="drop image"></image-slot>
+                                    data-store-width="2200" data-store={project.id} placeholder="drop image"></image-slot>
                       </div>
                       {b.caption ? <div className="gb-caption"
                                         dangerouslySetInnerHTML={{ __html: b.caption.replace(/\n/g, "<br>") }}></div> : null}
@@ -235,7 +235,7 @@ function MediaGrid({ project, layout, tweaks, selectedId, onSelect, onChange }) 
                   : isVid
                   ? <React.Fragment>
                       <div className="gb-vidwrap" style={{ aspectRatio: (b.ratio || "16/9") }}>
-                        <GridVideo url={b.url} editing={false} posterId={project.id + "-" + b.id + "-poster"} />
+                        <GridVideo url={b.url} editing={false} posterId={project.id + "-" + b.id + "-poster"} store={project.id} />
                       </div>
                       {b.caption ? <div className="gb-caption"
                                         dangerouslySetInnerHTML={{ __html: b.caption.replace(/\n/g, "<br>") }}></div> : null}
@@ -297,7 +297,7 @@ function MediaGrid({ project, layout, tweaks, selectedId, onSelect, onChange }) 
                 ? <React.Fragment>
                     <div className="gb-imgwrap" style={{ height: ratioH(b.w, b.ratio) }}>
                       <image-slot id={project.id + "-" + b.id} shape="rounded" radius="2"
-                                  data-store-width="2200" placeholder="drop image"></image-slot>
+                                  data-store-width="2200" data-store={project.id} placeholder="drop image"></image-slot>
                     </div>
                     {b.caption ? <div className="gb-caption"
                                       dangerouslySetInnerHTML={{ __html: b.caption.replace(/\n/g, "<br>") }}></div> : null}
@@ -306,7 +306,7 @@ function MediaGrid({ project, layout, tweaks, selectedId, onSelect, onChange }) 
                 ? <React.Fragment>
                     <div className="gb-vidwrap" style={{ height: ratioH(b.w, b.ratio) }}>
                       <GridVideo url={b.url} editing={editLayout}
-                                 posterId={project.id + "-" + b.id + "-poster"} />
+                                 posterId={project.id + "-" + b.id + "-poster"} store={project.id} />
                     </div>
                     {b.caption ? <div className="gb-caption"
                                       dangerouslySetInnerHTML={{ __html: b.caption.replace(/\n/g, "<br>") }}></div> : null}
