@@ -381,7 +381,14 @@
     .hm-link:hover{opacity:.6}
     .projects{width:100%;max-width:100%;padding:26px 25px 0}
     .works2{width:100%}
-    .work-row{grid-template-columns:1fr 55px;padding:14px 0;gap:8px}
+    /* Works ledger on mobile: ONE fixed row per project — title (truncates with
+       … if long) + year, both on screen, no horizontal scroll. Overrides the
+       desktop inline width:500px on the title and translateX(100px) on the year
+       that were pushing the year off-screen. Tags hidden (shown on detail). */
+    .work-row{grid-template-columns:minmax(0,1fr) auto;padding:13px 0;gap:14px;align-items:baseline}
+    .w-ttl{width:auto !important;min-width:0;overflow:hidden;text-overflow:ellipsis;
+           white-space:nowrap;font-size:15px}
+    .w-yr{transform:none !important;text-align:right !important;white-space:nowrap;font-size:15px}
     .w-tags{display:none}
     .wrap-wide{padding:0 25px}
     .wrap-wide.detail-wide{padding-top:26px}
