@@ -15,7 +15,7 @@ Every file in this project goes up together. The important ones:
 - `*.jsx` — the code for the site
 - `image-slot.js`, `tweaks-panel.jsx`
 - `atelier-content.state.json` — all your text & layouts
-- `image-slots.state.json` — your images (dropped photos, base64-encoded)
+- `img-index.state.json` + `img-*.state.json` — your images (one small file per image)
 - `_ds/`, `images/` — fonts and static assets
 
 > GitHub Pages serves `index.html` by default. So either rename
@@ -103,11 +103,11 @@ git push -u origin main
 
 1. Open this project in the editor (this tool) — your edit mode is here.
 2. Make changes: edit text, drop images, mark projects published/draft, etc.
-   Text/layout saves into `atelier-content.state.json`. Each NEW dropped image
-   saves into its own small `img-<slot>.state.json` file (listed in
-   `img-index.state.json`). Older images still live in `image-slots.state.json`.
+   Text/layout saves into `atelier-content.state.json`. Each dropped image saves
+   into its own small `img-<slot>.state.json` file (all listed in
+   `img-index.state.json`).
 3. Click **Download files for GitHub** — it grabs `atelier-content.state.json`,
-   `img-index.state.json`, and only the small image files that changed.
+   `img-index.state.json`, and the small image files.
 4. Drop those into the repo (GitHub Desktop shows exactly which changed) and
    commit/push. GitHub Pages rebuilds in about a minute.
 
@@ -121,11 +121,11 @@ git push -u origin main
 - **Fonts:** the site currently falls back to *Space Grotesk* (free). To use the
   licensed *Founders Grotesk*, drop the `.otf` files into the path the CSS expects.
   Otherwise leave it — Space Grotesk looks clean and is fully licensed for web.
-- **Image storage:** each dropped image is saved to its OWN small
+- **Image storage:** every image is saved to its OWN small
   `img-<slot>.state.json` file (kept under ~1.3 MB so the editor can always
-  write it). The old combined `image-slots.state.json` is still read as a
-  fallback for images saved before this change — leave it on GitHub. This is
-  why newly added images now publish reliably: no single file can get too big.
+  write it). There is no longer one big combined file — the old 13 MB
+  `image-slots.state.json` has been split up and removed. This is why adding
+  images now publishes reliably: no single file can ever get too big.
 - **Load speed:** the site compiles itself in the visitor's browser (fine for a
   portfolio, just a beat slower on first load). If you ever want it instant, we can
   pre-build it — not necessary now.

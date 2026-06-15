@@ -36,7 +36,7 @@ const HOME_RATIOS = {
 };
 const ROTATE_MS = 5000; // image changes every 5 seconds
 
-function Home({ go, projects, isPublished, editing, homePinned, titleColors }) {
+function Home({ go, setFilter, projects, isPublished, editing, homePinned, titleColors }) {
   // Landing shows pinned projects in author-defined order.
   // Fallback to HOME_ORDER+HOME_IMAGES when homePinned is empty.
   const pinned = homePinned || {};
@@ -59,6 +59,18 @@ function Home({ go, projects, isPublished, editing, homePinned, titleColors }) {
 
   return (
     <div className="home-hero fade">
+      {/* Mobile-only minimal landing: centered logo with works / about / contact
+          below, on flat cream (no image). Hidden on desktop via CSS. */}
+      <nav className="home-mobile-nav">
+        <button className="hm-logo" onClick={() => go("home")} aria-label="home">
+          <image-slot id="home-logo" shape="rect" data-store="home" style={{ pointerEvents: "none" }}></image-slot>
+        </button>
+        <div className="hm-links">
+          <button className="hm-link" onClick={() => { if (setFilter) setFilter("all"); go("projects"); }}>works</button>
+          <button className="hm-link" onClick={() => go("about")}>about</button>
+          <button className="hm-link" onClick={() => go("contact")}>contact</button>
+        </div>
+      </nav>
       <div className="home-stage" ref={stageRef}
            onDragEnter={() => setPaused(true)}
            onDragLeave={(e) => { if (e.target === e.currentTarget) setPaused(false); }}

@@ -126,6 +126,8 @@
             color:var(--bg);text-decoration:underline;text-underline-offset:3px;
             letter-spacing:.005em;cursor:pointer;transition:opacity .25s ease}
   .home-cap:hover{opacity:.6}
+  /* mobile-only minimal landing nav (centered logo + works/about/contact) — hidden on desktop */
+  .home-mobile-nav{display:none}
 
   /* ---- HEADER (all pages; absolute over the top band so content begins at a fixed offset) ---- */
   .app{position:relative;min-height:100vh}
@@ -313,42 +315,134 @@
 
   /* ---- MOBILE HAMBURGER MENU (shown < 820px) ---- */
   .topbar-mobile{display:none;justify-self:end;position:relative}
-  .hamburger{font-size:26px;line-height:1;color:var(--orange);padding:6px 4px;
+  .hamburger{font-size:27px;line-height:1;color:var(--orange);padding:6px 4px;
     background:none;border:0;cursor:pointer;transition:opacity .15s ease}
   .hamburger:hover{opacity:.6}
-  .mobile-menu{position:absolute;top:calc(100% + 10px);right:0;min-width:210px;
-    background:var(--bg);border:1px solid var(--border);border-radius:8px;
-    display:flex;flex-direction:column;padding:8px 0;z-index:30}
-  .mm-item,.mm-subitem{text-align:left;padding:11px 20px;font-size:1rem;color:var(--orange);
+  /* Full-width cream panel that slides DOWN from under the bar (nemestudio-style).
+     Sits below the bar (z-index) so it appears to drop out of the header. */
+  .mobile-menu{display:none;flex-direction:column;position:fixed;top:0;left:0;right:0;z-index:15;
+    background:var(--bg);padding:78px 0 22px;border-bottom:1px solid var(--border);
+    transform:translateY(-100%);transition:transform .34s cubic-bezier(.4,0,.2,1);pointer-events:none}
+  .mobile-menu.open{transform:translateY(0);pointer-events:auto}
+  .mm-item,.mm-subitem{text-align:left;padding:13px 24px;font-size:1.2rem;color:var(--orange);
     background:none;border:0;cursor:pointer;transition:opacity .12s ease;font-family:inherit}
   .mm-item{display:flex;justify-content:space-between;align-items:center;gap:18px}
   .mm-item:hover,.mm-subitem:hover{opacity:.6}
-  .mm-caret{font-size:.85rem;transition:transform .15s ease}
+  .mm-caret{font-size:.9rem;padding:4px 8px;margin:-4px -8px;transition:transform .15s ease}
   .mm-caret.open{transform:translateY(2px) rotate(180deg)}
-  .mm-sub{display:flex;flex-direction:column;border-top:1px solid var(--border);
-    margin:4px 0 0;padding-top:4px}
-  .mm-subitem{padding-left:34px;font-size:.94rem;opacity:.75}
+  .mm-sub{display:flex;flex-direction:column;margin:2px 0 6px;padding:2px 0}
+  .mm-subitem{padding-left:40px;font-size:1.02rem;opacity:.7}
   .mm-subitem.active{font-weight:700;opacity:1}
 
   /* ---- RESPONSIVE ---- */
   @media(max-width:820px){
-    .topbar{padding:5px 16px;gap:8px;grid-template-columns:1fr auto}
-    .topbar-logo{width:48px;height:48px}
-    .topbar-logo image-slot{width:48px;height:48px}
-    .topbar-center,.topbar-right{display:none}
-    .topbar-mobile{display:flex}
-    .home-hero{padding-top:80px;overflow:hidden}
-    .home-stage{width:calc(100% - 32px);overflow:hidden;height:calc(100svh - 90px)}
-    .projects{width:100%;max-width:100%;padding:110px 20px 0}
+    /* Inner pages on mobile: NO hamburger. A static two-row bar — row 1 holds the
+       logo (left) + about/contact (right) like desktop; on projects/detail the
+       category filters wrap onto row 2, below a hairline. (Home handled below.) */
+    .topbar{position:static;padding:10px 16px;gap:6px 12px;
+            grid-template-columns:1fr auto;background:var(--bg);border-bottom:1px solid var(--border)}
+    .topbar-logo{width:52px;height:52px;grid-column:1;grid-row:1;justify-self:start}
+    .topbar-logo image-slot{width:52px;height:52px}
+    .topbar-mobile,.mobile-menu{display:none}
+    .topbar-right{display:flex;grid-column:2;grid-row:1;justify-self:end;align-items:center;gap:18px}
+    .topbar-center{grid-column:1 / -1;grid-row:2;justify-self:stretch;display:flex;flex-wrap:wrap;
+                   justify-content:flex-start;gap:9px 16px;margin-top:10px;padding-top:12px;
+                   border-top:1px solid var(--border)}
+    .topbar-center:empty{display:none}
+    .topbar-center .tf,.topbar-right .tf{font-size:1rem}
+    /* Landing (home) on mobile: minimal — a centered logo with works / about /
+       contact below, on flat cream. No image, no top bar, no hamburger. */
+    .page-home .topbar{display:none}
+    .page-home .mobile-menu{display:none}
+    .home-hero{display:block;height:100svh;padding:0;background:var(--bg)}
+    .home-stage{display:none}
+    .home-mobile-nav{position:relative;display:flex;align-items:center;justify-content:center;
+                     height:100svh;width:100%}
+    .hm-logo{position:absolute;top:5vh;left:50%;transform:translateX(-50%);
+             width:88px;height:88px;padding:0;background:none;border:0;cursor:pointer;transition:opacity .15s ease;
+             animation:logoGlideDown .55s cubic-bezier(.33,0,.2,1) both}
+    .hm-logo:hover{opacity:.6}
+    .hm-logo image-slot{width:88px;height:88px;display:block}
+    .hm-logo image-slot::part(frame){background:transparent}
+    .hm-links{display:flex;flex-direction:column;align-items:center;gap:4px;
+              animation:hmLinksIn .5s ease .22s both}
+    /* Landing entrance: the logo settles DOWN from the top edge into place — so
+       returning home from a page where it was pinned to the top reads as the
+       same logo gliding back down. Links fade up just after. */
+    @keyframes logoGlideDown{
+      from{transform:translateX(-50%) translateY(-4.5vh);opacity:0}
+      60%{opacity:1}
+      to{transform:translateX(-50%) translateY(0);opacity:1}
+    }
+    @keyframes hmLinksIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+    @media(prefers-reduced-motion:reduce){.hm-logo,.hm-links{animation:none}}
+    .hm-link{background:none;border:0;font-family:inherit;font-size:1.2rem;color:var(--orange);
+             padding:7px 12px;cursor:pointer;line-height:1.3;transition:opacity .15s ease}
+    .hm-link:hover{opacity:.6}
+    .projects{width:100%;max-width:100%;padding:26px 25px 0}
     .works2{width:100%}
     .work-row{grid-template-columns:1fr 55px;padding:14px 0;gap:8px}
     .w-tags{display:none}
-    .wrap-wide{padding:0 20px}
-    .wrap-wide.detail-wide{padding-top:110px}
+    .wrap-wide{padding:0 25px}
+    .wrap-wide.detail-wide{padding-top:26px}
     .detail-head{width:100% !important}
     .detail-wide .detail-title{font-size:clamp(1.8rem,6vw,3rem)}
     .detail-wide .detail-meta{font-size:.9rem;gap:8px;flex-wrap:wrap}
-    .info{max-width:100%;padding:110px 24px 80px}
+    .info{max-width:100%;padding:34px 29px 80px}
+    /* Awards block sits ~2 lines lower than the bio above it (mobile single
+       column), so the section reads as its own group. */
+    .grid-mobile .grid-block[data-bid="awards"]{margin-top:2.4em}
+    /* about / contact on mobile: a single centered logo, fixed near the top
+       edge (no nav). The page content scrolls beneath it. Logo → home. */
+    /* about / contact on mobile: one centered logo, starting at the LANDING
+       position (same as home). On about (scrollable) it slides up and pins to
+       the top with a hairline as you scroll. Contact has little content, so the
+       logo stays put and the text is centered in the space below. Logo → home. */
+    .page-about .topbar,.page-contact .topbar{position:fixed;top:0;left:0;right:0;z-index:20;
+      display:flex;align-items:center;justify-content:center;padding:5vh 16px 16px;
+      background:var(--bg);border-bottom:1px solid transparent;
+      transition:padding-top .3s ease, border-color .3s ease}
+    .page-about .topbar.scrolled,.page-contact .topbar.scrolled{padding-top:16px;
+      border-bottom-color:var(--border)}
+    .page-about .topbar-center,.page-contact .topbar-center,
+    .page-about .topbar-right,.page-contact .topbar-right{display:none}
+    .page-about .topbar-logo,.page-contact .topbar-logo{width:88px;height:88px;
+      transition:width .3s cubic-bezier(.33,0,.2,1),height .3s cubic-bezier(.33,0,.2,1)}
+    .page-about .topbar-logo image-slot,.page-contact .topbar-logo image-slot{width:88px;height:88px;
+      transition:width .3s cubic-bezier(.33,0,.2,1),height .3s cubic-bezier(.33,0,.2,1)}
+    /* Pinned (scrolled): the logo shrinks as it settles to the top edge. This is
+       independent of the home page's glide-down entrance, so returning home
+       still drops the full-size 88px logo back into place — no conflict. */
+    .page-about .topbar.scrolled .topbar-logo,.page-contact .topbar.scrolled .topbar-logo,
+    .page-about .topbar.scrolled .topbar-logo image-slot,.page-contact .topbar.scrolled .topbar-logo image-slot{
+      width:50px;height:50px}
+    .page-about .info,.page-contact .info{padding-top:calc(10vh + 100px)}
+    .page-about .detail-wide{padding-top:calc(10vh + 100px)}
+    .page-contact .detail-wide{min-height:100svh;display:flex;flex-direction:column;
+      justify-content:center;padding:calc(10vh + 100px) 29px 56px}
+    /* projects (works) AND project detail on mobile: NO about/contact. The logo
+       glides UP and SHRINKS into a compact centered header (the reverse of the
+       home entrance), with the category filters centered below, no hairlines. */
+    .page-projects .topbar,.page-detail .topbar{position:sticky;top:0;z-index:20;display:flex;flex-direction:column;
+      align-items:center;gap:0;padding:16px 16px 14px;grid-template-columns:none;
+      background:var(--bg);border-bottom:none}
+    .page-projects .topbar-right,.page-projects .topbar-mobile,
+    .page-detail .topbar-right,.page-detail .topbar-mobile{display:none}
+    .page-projects .topbar-logo,.page-detail .topbar-logo{width:52px;height:52px;justify-self:center;
+      animation:logoUpShrink .5s cubic-bezier(.33,0,.2,1) both}
+    .page-projects .topbar-logo image-slot,.page-detail .topbar-logo image-slot{width:52px;height:52px}
+    .page-projects .topbar-center,.page-detail .topbar-center{display:flex;flex-wrap:wrap;justify-content:center;
+      align-items:baseline;gap:8px 14px;width:100%;margin-top:22px;padding-top:0;
+      border-top:none;animation:hmLinksIn .45s ease .18s both}
+    .page-projects .topbar-center .tf,.page-detail .topbar-center .tf{font-size:.92rem}
+    .page-projects .topbar-center .caret,.page-detail .topbar-center .caret{display:none}
+    @keyframes logoUpShrink{
+      from{transform:translateY(24px) scale(1.7);opacity:0}
+      55%{opacity:1}
+      to{transform:translateY(0) scale(1);opacity:1}
+    }
+    @media(prefers-reduced-motion:reduce){.page-projects .topbar-logo,.page-projects .topbar-center,
+      .page-detail .topbar-logo,.page-detail .topbar-center{animation:none}}
   }
 </style>
 </head>
@@ -453,13 +547,28 @@
     document.getElementById('__admin_modal').addEventListener('click', function(e) {
       if (e.target === this) __adminClose();
     });
+
+    // External links: open in a real new tab. On the published site this is a
+    // normal new-tab open. Inside the sandboxed editor preview (an iframe with
+    // no popup permission) window.open returns null — we then swallow the click
+    // so the preview frame doesn't try to load instagram/linkedin inline and
+    // hit their anti-framing block (ERR_BLOCKED_BY_RESPONSE). Live is unaffected.
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a[target="_blank"]');
+      if (!a) return;
+      var href = a.getAttribute('href');
+      if (!href || /^(#|javascript:)/i.test(href)) return;
+      e.preventDefault();
+      var w = window.open(href, '_blank', 'noopener,noreferrer');
+      if (w) { try { w.opener = null; } catch (err) {} }
+    });
   </script>
 
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
   <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
 
-  <script src="image-slot.js?v=3"></script>
+  <script src="image-slot.js?v=5"></script>
 
   <script type="text/babel" src="Header.jsx"></script>
   <script type="text/babel" src="TopBar.jsx"></script>

@@ -9,12 +9,17 @@ function TopBar({ page, filter, setFilter, go, projects, filterOrder }) {
   const [menuOpen, setMenuOpen] = React.useState(false);
   const [projOpen, setProjOpen] = React.useState(false);
   // Add a subtle border when page is scrolled
+  // Toggle a hairline/pin state once the page is scrolled. Re-run on every page
+  // change so a stale `.scrolled` from a previous page is cleared the moment a
+  // fresh page loads at scrollTop 0 (e.g. about/contact open with the logo at
+  // its landing position, then pin as you actually scroll).
   React.useEffect(() => {
     const el = document.querySelector(".topbar");
-    const onScroll = () => el && el.classList.toggle("scrolled", window.scrollY > 5);
+    const onScroll = () => el && el.classList.toggle("scrolled", window.scrollY > 40);
+    onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [page]);
   // Derive filter list dynamically from all project tags. "selected" is always
   // first; the rest follow the author-controlled order in `filterOrder` (set
   // from the Tweaks panel). Any tag a project uses that ISN'T in filterOrder
@@ -54,31 +59,37 @@ function TopBar({ page, filter, setFilter, go, projects, filterOrder }) {
   // resets the filter to "selected" (all) so you land on the full list.
   const goProjects = () => { setFilter("all"); go("projects"); };
 
-  // Mobile hamburger menu — about / contact / projects (expands to categories)
+  // Mobile menu helpers — close the panel, then navigate / pick a filter.
   const goM = (p, id) => { setMenuOpen(false); setProjOpen(false); go(p, id); };
   const pickM = (k) => { setMenuOpen(false); setProjOpen(false); pick(k); };
+  // Mobile: a slim cream bar holds only the logo + hamburger. The menu itself
+  // is a full-width cream panel that slides DOWN from under the bar (below).
   const mobileNav = (
     <div className="topbar-mobile">
       <button className="hamburger" aria-label="menu" aria-expanded={menuOpen}
               onClick={() => setMenuOpen((o) => !o)}>{menuOpen ? "\u00D7" : "\u2630"}</button>
-      {menuOpen && (
-        <div className="mobile-menu">
-          <button className="mm-item" onClick={() => goM("about")}>about</button>
-          <button className="mm-item" onClick={() => goM("contact")}>contact</button>
-          <button className="mm-item" onClick={() => setProjOpen((o) => !o)}>
-            <span>works</span>
-            <span className={"mm-caret" + (projOpen ? " open" : "")}>{"\u2304"}</span>
-          </button>
-          {projOpen && (
-            <div className="mm-sub">
-              {filters.map(([k, label]) => (
-                <button key={k} className={"mm-subitem" + (filter === k ? " active" : "")}
-                        onClick={() => pickM(k)}>{label}</button>
-              ))}
-            </div>
-          )}
+    </div>
+  );
+  // Full-width slide-down panel. Always rendered (so the slide can animate);
+  // visibility + slide are driven by the `open` class. works · about · contact,
+  // with the category list tucked under works (tap the caret to reveal).
+  const mobileMenu = (
+    <div className={"mobile-menu" + (menuOpen ? " open" : "")}>
+      <button className="mm-item" onClick={() => { setMenuOpen(false); setProjOpen(false); if (setFilter) setFilter("all"); go("projects"); }}>
+        <span>works</span>
+        <span className={"mm-caret" + (projOpen ? " open" : "")}
+              onClick={(e) => { e.stopPropagation(); setProjOpen((o) => !o); }}>{"\u2304"}</span>
+      </button>
+      {projOpen && (
+        <div className="mm-sub">
+          {filters.map(([k, label]) => (
+            <button key={k} className={"mm-subitem" + (filter === k ? " active" : "")}
+                    onClick={() => pickM(k)}>{label}</button>
+          ))}
         </div>
       )}
+      <button className="mm-item" onClick={() => goM("about")}>about</button>
+      <button className="mm-item" onClick={() => goM("contact")}>contact</button>
     </div>
   );
 
@@ -138,12 +149,15 @@ function TopBar({ page, filter, setFilter, go, projects, filterOrder }) {
   }
 
   return (
-    <header className="topbar fade">
-      {logo}
-      {center}
-      {right}
-      {mobileNav}
-    </header>
+    <React.Fragment>
+      <header className="topbar fade">
+        {logo}
+        {center}
+        {right}
+        {mobileNav}
+      </header>
+      {mobileMenu}
+    </React.Fragment>
   );
 }
 window.TopBar = TopBar;

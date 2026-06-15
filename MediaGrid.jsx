@@ -9,6 +9,19 @@ function linkHref(h) {
   if (/^(https?:\/\/|mailto:|tel:|\/|#)/i.test(s)) return s;
   return "https://" + s;
 }
+// Inline <a> tags authored inside a TEXT block (e.g. instagram / linkedin links
+// in Contact) don't carry target/rel, so clicking them tries to navigate the
+// host frame — which the editor's sandboxed preview blocks. Force every external
+// anchor to open in a new tab. Internal SPA links (data-goto) are left untouched
+// so the wrapper's click handler can route them.
+function externalizeLinks(html) {
+  if (!html) return html;
+  return html.replace(/<a\b([^>]*)>/gi, function (m, attrs) {
+    if (/data-goto/i.test(attrs)) return m;       // internal navigation
+    if (/target\s*=/i.test(attrs)) return m;      // author set one already
+    return '<a' + attrs + ' target="_blank" rel="noopener noreferrer">';
+  });
+}
 //
 // Video blocks are sized like images (height = w × ratio, default 16/9). For
 // YouTube/Vimeo we render a lightweight "facade" — just the poster thumbnail + a
@@ -221,6 +234,7 @@ function MediaGrid({ project, layout, tweaks, selectedId, onSelect, onChange }) 
             const style = { width: widthPct, alignSelf: widthPct === "100%" ? "stretch" : "center" };
             return (
               <div key={b.id} ref={(el) => (blockRefs.current[b.id] = el)}
+                   data-bid={b.id}
                    className={"grid-block" + (isImg ? " img" : "") + (isVid ? " vid" : "")}
                    style={style}>
                 {isImg
@@ -247,7 +261,7 @@ function MediaGrid({ project, layout, tweaks, selectedId, onSelect, onChange }) 
                        dangerouslySetInnerHTML={{ __html: (b.body || []).join("\n\n").replace(/\n/g, "<br>") }}></a>
                   : <div className="gb-text"
                          style={{ fontSize: (b.fontSize || 15) + "px", lineHeight: b.lineHeight || 1.72, textAlign: b.textAlign || "left" }}
-                         dangerouslySetInnerHTML={{ __html: (b.body || []).join("\n\n").replace(/\n/g, "<br>") }}></div>}
+                         dangerouslySetInnerHTML={{ __html: externalizeLinks((b.body || []).join("\n\n").replace(/\n/g, "<br>")) }}></div>}
               </div>
             );
           })}
@@ -291,6 +305,7 @@ function MediaGrid({ project, layout, tweaks, selectedId, onSelect, onChange }) 
           return (
             <div key={b.id}
                  ref={(el) => (blockRefs.current[b.id] = el)}
+                 data-bid={b.id}
                  className={"grid-block" + (isImg ? " img" : "") + (isVid ? " vid" : "") + (b.id === selectedId ? " sel" : "")}
                  style={style}>
               {isImg
@@ -323,7 +338,7 @@ function MediaGrid({ project, layout, tweaks, selectedId, onSelect, onChange }) 
                        style={{ fontSize: (b.fontSize != null ? b.fontSize : 17) + "px",
                                 lineHeight: (b.lineHeight != null ? b.lineHeight : 1.72),
                                 textAlign: b.textAlign || "left" }}
-                       dangerouslySetInnerHTML={{ __html: (b.body || []).join("\n\n").replace(/\n/g, "<br>") }}></div>}
+                       dangerouslySetInnerHTML={{ __html: externalizeLinks((b.body || []).join("\n\n").replace(/\n/g, "<br>")) }}></div>}
               {editLayout && <div className="gb-tag">{b.type} · {b.w}px · c{b.x} r{b.y}</div>}
               {editLayout && <div className="gb-hit" onPointerDown={(e) => startMove(e, b)}></div>}
               {editLayout && <div className="gb-res" onPointerDown={(e) => startResize(e, b)}></div>}

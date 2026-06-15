@@ -649,9 +649,9 @@ function App() {
   };
 
   return (
-    <div className={"ds-page app" + (t.editLayout ? " editing" : "")}>
+    <div className={"ds-page app page-" + page + (t.editLayout ? " editing" : "")}>
       <TopBar page={page} filter={filter} setFilter={setFilter} go={go} projects={mergedProjects} filterOrder={filterOrder} />
-      {page === "home" && <Home go={go} projects={mergedProjects} isPublished={isPublished} editing={t.editLayout} homePinned={homePinned} titleColors={content.homeTitleColors || {}} />}
+      {page === "home" && <Home go={go} setFilter={setFilter} projects={mergedProjects} isPublished={isPublished} editing={t.editLayout} homePinned={homePinned} titleColors={content.homeTitleColors || {}} />}
       {page === "projects" && <Projects projects={mergedProjects} filter={filter} go={go}
                                          isPublished={isPublished} editing={t.editLayout} />}
       {page === "detail" && (

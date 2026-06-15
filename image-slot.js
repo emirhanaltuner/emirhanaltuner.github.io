@@ -75,15 +75,15 @@
 
   const subs = new Set();
 
-  // Legacy combined file: fetched once, read-only fallback for old images.
+  // Legacy combined file: every image has since been migrated to its own small
+  // img-<id>.state.json shard, so the big combined file is gone. We no longer
+  // fetch it (that would just 404 on every load). Kept as an empty object so
+  // the getSlot() fallback path below stays valid and harmless.
   let legacy = {};
   let legacyP = null;
   function loadLegacy() {
     if (legacyP) return legacyP;
-    legacyP = fetch(LEGACY_FILE, { cache: 'no-cache' })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((j) => { if (j && typeof j === 'object') legacy = j; })
-      .catch(() => {});
+    legacyP = Promise.resolve();
     return legacyP;
   }
 
@@ -99,14 +99,12 @@
   function loadStore(store) {
     const s = st(store);
     if (s.loadP) return s.loadP;
-    s.loadP = Promise.all([
-      loadLegacy(),
-      fetch(fileFor(store), { cache: 'no-cache' })
-        .then((r) => (r.ok ? r.json() : null)).catch(() => null),
-    ]).then(function (res) {
-      const j = res[1];
-      // Merge: shard loses to any in-memory change that raced ahead of the
-      // fetch (drop or clear) so neither is clobbered by hydration.
+    // Fetch the small per-store shard FIRST and render it immediately — do NOT
+    // block on the big legacy file. Legacy is fetched in the background and only
+    // matters as a fallback for ids that aren't in any shard (it notifies subs
+    // again when it lands). This is why the logo (its own 25 KB shard) appears
+    // instantly instead of waiting seconds for the 13 MB legacy file.
+    const applyShard = function (j) {
       if (j && typeof j === 'object') {
         const merged = Object.assign({}, j, s.slots);
         for (const k in s.slots) {
@@ -118,14 +116,22 @@
         s.slots = merged;
       }
       s.tombstones.clear();
-    }).catch(function (err) {
-      console.warn('[image-slot] load failed for store "' + store + '":', err);
-    }).then(function () {
-      s.loaded = true;
-      console.log('[image-slot] store "' + store + '" loaded — ' +
-        Object.keys(s.slots).length + ' slot(s)');
-      subs.forEach((fn) => fn());
-    });
+    };
+    // Background legacy load: when it resolves, re-notify so any slot still
+    // relying on the legacy fallback (no shard yet) fills in.
+    loadLegacy().then(function () { subs.forEach((fn) => fn()); });
+    s.loadP = fetch(fileFor(store), { cache: 'no-cache' })
+      .then((r) => (r.ok ? r.json() : null)).catch(() => null)
+      .then(applyShard)
+      .catch(function (err) {
+        console.warn('[image-slot] load failed for store "' + store + '":', err);
+      })
+      .then(function () {
+        s.loaded = true;
+        console.log('[image-slot] store "' + store + '" loaded — ' +
+          Object.keys(s.slots).length + ' slot(s)');
+        subs.forEach((fn) => fn());
+      });
     return s.loadP;
   }
 
