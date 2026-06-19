@@ -328,6 +328,12 @@
     .page-about .detail-wide,.page-contact .detail-wide{max-width:60%;margin-left:auto;margin-right:auto}
     .page-about .grid-mobile .grid-block.img,.page-about .grid-mobile .grid-block.vid,
     .page-contact .grid-mobile .grid-block.img,.page-contact .grid-mobile .grid-block.vid{width:100% !important}
+    /* Project detail: inset the WHOLE column 10% each side so the header (title,
+       year, meta) and all text line up with the images at a uniform 10% margin.
+       Images then fill the inset column (overriding the 80% rule above). */
+    .page-detail .detail-wide{padding-left:10%;padding-right:10%}
+    .page-detail .grid-mobile .grid-block.img,
+    .page-detail .grid-mobile .grid-block.vid{width:100% !important}
   }
 
   /* ---- MOBILE HAMBURGER MENU (shown < 1100px) ---- */
@@ -415,6 +421,9 @@
     .w-tags{display:none}
     .wrap-wide{padding:0 25px}
     .wrap-wide.detail-wide{padding-top:26px}
+    /* Project detail: drop the title block a bit further below the sticky topbar
+       tags so it doesn't crowd them. (about/contact set their own padding below.) */
+    .page-detail .detail-wide{padding-top:50px}
     .detail-head{width:100% !important}
     .detail-wide .detail-title{font-size:clamp(1.8rem,6vw,3rem)}
     .detail-wide .detail-meta{font-size:.9rem;gap:8px;flex-wrap:wrap}
