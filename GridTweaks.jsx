@@ -689,6 +689,20 @@ function GridTweaks({ page, t, setTweak, selected, actions, copied, projectSelec
                          actions.update(selected.id, { mobileOrder: v === "" ? undefined : parseInt(v, 10) });
                        }} />
               </div>
+              <div className="twk-row" style={{ gap: 8, alignItems: "center" }}>
+                <div className="twk-lbl"><span>iPad order</span></div>
+                <input className="twk-field" type="number" placeholder="= mobile" min={1}
+                       style={{ padding: "6px 8px", width: 72 }}
+                       value={selected.tabletOrder !== undefined ? selected.tabletOrder : ""}
+                       onChange={(e) => {
+                         const v = e.target.value.trim();
+                         actions.update(selected.id, { tabletOrder: v === "" ? undefined : parseInt(v, 10) });
+                       }} />
+              </div>
+              <div style={{ fontSize: 11, opacity: 0.55, padding: "0 0 6px", lineHeight: 1.5 }}>
+                Order of blocks in the single column. <strong>iPad order</strong> only
+                affects tablet portrait (iPad); leave it blank to reuse the mobile order.
+              </div>
               {(() => {
                 const rr = String(selected.ratio || "3/2").split("/").map(Number);
                 const isVert = (selected.type === "image" || selected.type === "video") && rr[1] > rr[0];

@@ -128,6 +128,9 @@ function MediaGrid({ project, layout, tweaks, selectedId, onSelect, onChange }) 
   // absolute-positioned canvas (which is sized for ~1600px and overlaps badly on
   // a tablet). Keep this in sync with the @media(max-width:1100px) block in index.html.
   const narrow = useNarrow(1100);
+  // Phones are <=700px; tablets are the 701–1100px band. This lets a block carry
+  // a separate `tabletOrder` for iPad portrait while phones use `mobileOrder`.
+  const phone = useNarrow(700);
   const { columns, gridWidth, rowHeight, showGrid, showCoords, editLayout } = tweaks;
   // The grid lines + coordinate numbers are an EDITING aid — only ever shown while
   // Edit mode is on. Visitors (edit off) always see a clean page, never the overlay.
@@ -216,9 +219,15 @@ function MediaGrid({ project, layout, tweaks, selectedId, onSelect, onChange }) 
 
   // ── Mobile: single-column flow sorted by y then x ──────────────────────────
   if (narrow && !editLayout) {
+    const orderOf = (b) => {
+      // iPad portrait can carry its own tabletOrder; if unset it reuses
+      // mobileOrder, then finally auto (Infinity → falls to y/x).
+      if (!phone && b.tabletOrder !== undefined) return b.tabletOrder;
+      return b.mobileOrder !== undefined ? b.mobileOrder : Infinity;
+    };
     const sorted = [...layout].sort((a, b) => {
-      const ao = a.mobileOrder !== undefined ? a.mobileOrder : Infinity;
-      const bo = b.mobileOrder !== undefined ? b.mobileOrder : Infinity;
+      const ao = orderOf(a);
+      const bo = orderOf(b);
       if (ao !== bo) return ao - bo;
       return a.y - b.y || a.x - b.x;
     });
