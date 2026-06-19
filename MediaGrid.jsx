@@ -123,7 +123,11 @@ function useNarrow(bp) {
 }
 
 function MediaGrid({ project, layout, tweaks, selectedId, onSelect, onChange }) {
-  const narrow = useNarrow(820);
+  // Single-column mobile/tablet layout kicks in at 1100px so iPad Pro PORTRAIT
+  // (834px on 11", 1024px on 12.9") gets the clean flow instead of the desktop
+  // absolute-positioned canvas (which is sized for ~1600px and overlaps badly on
+  // a tablet). Keep this in sync with the @media(max-width:1100px) block in index.html.
+  const narrow = useNarrow(1100);
   const { columns, gridWidth, rowHeight, showGrid, showCoords, editLayout } = tweaks;
   // The grid lines + coordinate numbers are an EDITING aid — only ever shown while
   // Edit mode is on. Visitors (edit off) always see a clean page, never the overlay.

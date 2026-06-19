@@ -313,7 +313,15 @@
   .grid-mobile .grid-block image-slot{width:100%;display:block;height:100%}
   .grid-mobile .gb-text{font-size:15px !important;line-height:1.72}
 
-  /* ---- MOBILE HAMBURGER MENU (shown < 820px) ---- */
+  /* On TABLETS in portrait (iPad etc.) the single column is wide, so full-bleed
+     images feel oversized. Constrain image/video blocks to 80% centered for some
+     breathing room. Phones (<=700px) keep full-width. */
+  @media(min-width:701px) and (max-width:1100px){
+    .grid-mobile .grid-block.img,
+    .grid-mobile .grid-block.vid{width:80% !important;align-self:center !important}
+  }
+
+  /* ---- MOBILE HAMBURGER MENU (shown < 1100px) ---- */
   .topbar-mobile{display:none;justify-self:end;position:relative}
   .hamburger{font-size:27px;line-height:1;color:var(--orange);padding:6px 4px;
     background:none;border:0;cursor:pointer;transition:opacity .15s ease}
@@ -334,8 +342,14 @@
   .mm-subitem{padding-left:40px;font-size:1.02rem;opacity:.7}
   .mm-subitem.active{font-weight:700;opacity:1}
 
-  /* ---- RESPONSIVE ---- */
-  @media(max-width:820px){
+  /* ---- RESPONSIVE ----
+     Breakpoint is 1100px (not ~768) on purpose: iPad Pro PORTRAIT is 834px (11")
+     or 1024px (12.9") wide — both above a typical phone breakpoint — so without
+     this they'd fall into the desktop layout (fixed 1400/1100px frames) and
+     overlap. At 1100px every tablet in portrait gets the clean single-column
+     layout; tablets in landscape (1194/1366px) and laptops keep the desktop
+     layout. Keep this in sync with useNarrow(1100) in MediaGrid.jsx. */
+  @media(max-width:1100px){
     /* Inner pages on mobile: NO hamburger. A static two-row bar — row 1 holds the
        logo (left) + about/contact (right) like desktop; on projects/detail the
        category filters wrap onto row 2, below a hairline. (Home handled below.) */
