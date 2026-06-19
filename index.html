@@ -314,11 +314,20 @@
   .grid-mobile .gb-text{font-size:15px !important;line-height:1.72}
 
   /* On TABLETS in portrait (iPad etc.) the single column is wide, so full-bleed
-     images feel oversized. Constrain image/video blocks to 80% centered for some
-     breathing room. Phones (<=700px) keep full-width. */
+     content feels oversized. Give generous side margins that echo the desktop
+     proportions (desktop works text area is 1100/1400 ≈ 10% margins each side;
+     about reads as a centered ~60% column). Phones (<=700px) keep their snug
+     padding. */
   @media(min-width:701px) and (max-width:1100px){
     .grid-mobile .grid-block.img,
     .grid-mobile .grid-block.vid{width:80% !important;align-self:center !important}
+    /* Works list: ~10% breathing room each side (matches desktop ledger ratio). */
+    .projects{padding-left:10% !important;padding-right:10% !important}
+    /* About / contact: content reads as a centered ~60% column. Images fill that
+       column (overriding the 80% rule above, since the column is already inset). */
+    .page-about .detail-wide,.page-contact .detail-wide{max-width:60%;margin-left:auto;margin-right:auto}
+    .page-about .grid-mobile .grid-block.img,.page-about .grid-mobile .grid-block.vid,
+    .page-contact .grid-mobile .grid-block.img,.page-contact .grid-mobile .grid-block.vid{width:100% !important}
   }
 
   /* ---- MOBILE HAMBURGER MENU (shown < 1100px) ---- */
